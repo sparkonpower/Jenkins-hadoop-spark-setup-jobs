@@ -61,7 +61,7 @@ git clone https://github.com/nkalband/Jenkins-hadoop-cluster-utils.git
 
 echo &quot;Running autogen.sh&quot;
 cd Jenkins-hadoop-cluster-utils
-bash -x ./autogen.sh $SLAVE_HOSTNAMES $SPARK_VERSION $HADOOP_VERSION $FLAG_HIVE_MYSQL
+./autogen.sh $SLAVE_HOSTNAMES $SPARK_VERSION $HADOOP_VERSION $FLAG_HIVE_MYSQL
 EOT
 
 echo &quot;Running Setup.sh&quot;
