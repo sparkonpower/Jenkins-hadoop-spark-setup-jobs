@@ -87,7 +87,6 @@
 
 #Cloning tpcds repo and running setup.sh 
 ssh $USER@$MASTER_IP /bin/bash &lt;&lt;EOT
-echo &apos;export WORKDIR=&apos;$work_dir&apos;&apos;&gt;&gt;~/.bashrc
 
 echo &apos;Removing existing tpcds setup folder&apos;
 rm -rf ${work_dir}/tpcds-setup &amp;&gt;&gt;/dev/null
@@ -101,15 +100,9 @@ echo &apos;Running setup.sh script to build TPCDS environment&apos;
 ./setup.sh
 source ~/.bashrc  
 EOT
+
 echo &quot;------------------------------------------------&quot;
-#Running install_tpcdep.sh 
-ssh $USER@$MASTER_IP /bin/bash &lt;&lt;EOT
-cd ${work_dir}/tpcds-setup
-echo &apos;Running install_tpcdep.sh script to install other setups&apos;
-./utils/install_tpcdep.sh 
-EOT
-echo &quot;------------------------------------------------&quot;
-#Updating confi parameters in run.config and running genData.sh
+#Updating config parameters in run.config and running genData.sh
 ssh $USER@$MASTER_IP /bin/bash &lt;&lt;EOT
 cd ${work_dir}/tpcds-setup
 echo &apos;updating the config parametrs&apos;
