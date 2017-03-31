@@ -1,6 +1,7 @@
 # Jenkins- jobs for hadoop and spark setup and TPCDS-run
 
 ### Pre-requisites:
+```bash
 1. Jenkins is installed on CI machine.Execute below commands for removing useSecurity tag from Jenkins config.xml to remove authentication 
     ex +g/useSecurity/d +g/authorizationStrategy/d -scwq /var/lib/jenkins/config.xml
 	sudo -S /etc/init.d/jenkins restart
@@ -22,7 +23,8 @@
 	Also add below line in file
 	unix_user        ALL=(ALL)       NOPASSWD: ALL
 	e.g. testuser        ALL=(ALL)       NOPASSWD: ALL
-
+```
+	
 ### How to use:
   ```bash
 1. To setup jekins job to use follow below steps one time on CI machine,
