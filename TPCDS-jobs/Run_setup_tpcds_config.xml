@@ -1,0 +1,164 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description></description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.TextParameterDefinition>
+          <name>USER</name>
+          <description>Linux user under whose home directory you want to setup TPCDS on master machine</description>
+          <defaultValue>testuser</defaultValue>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>MASTER_IP</name>
+          <description>IP of master machine where spark and hadoop is setup and TPCDS benchmark to be run</description>
+          <defaultValue>9.3.126.18</defaultValue>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>DB_SIZE</name>
+          <description>Size of tpcds DB in GB  e.g. 1/3/5</description>
+          <defaultValue>1</defaultValue>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>QUERIES</name>
+          <description>queries you want to run on tpcds DB e.g. (q1,q5,q12)</description>
+          <defaultValue>q3,q19</defaultValue>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>QUERY_ITERATION</name>
+          <description>Number of iteration of execution of query.Please enter new value if you want to change</description>
+          <defaultValue>2</defaultValue>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>DRIVER_MEM</name>
+          <description>Default config parameter to run TPCDS. Please enter new value if you want to change it as per your environment</description>
+          <defaultValue>20g</defaultValue>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>DRIVER_CORES</name>
+          <description>Default config parameter to run TPCDS. Please enter new value if you want to change it as per your environment</description>
+          <defaultValue>10</defaultValue>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>EXEC_MEM_OVERHEAD</name>
+          <description>Default config parameter to run TPCDS. Please enter new value if you want to change it as per your environment</description>
+          <defaultValue>1536</defaultValue>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>SHUFFLE_PARTITIONS</name>
+          <description>Default config parameter to run TPCDS. Please enter new value if you want to change it as per your environment</description>
+          <defaultValue>64</defaultValue>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>NUM_EXECUTORS</name>
+          <description>Default config parameter to run TPCDS. Please enter new value if you want to change it as per your environment</description>
+          <defaultValue>8</defaultValue>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>EXEC_CORES</name>
+          <description>Default config parameter to run TPCDS. Please enter new value if you want to change it as per your environment</description>
+          <defaultValue>18</defaultValue>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>EXEC_MEM</name>
+          <description>Default config parameter to run TPCDS. Please enter new value if you want to change it as per your environment</description>
+          <defaultValue>20g</defaultValue>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>GC_THREADS</name>
+          <description>Default config parameter to run TPCDS. Please enter new value if you want to change it as per your environment</description>
+          <defaultValue>9</defaultValue>
+        </hudson.model.TextParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+  </properties>
+  <scm class="hudson.scm.NullSCM"/>
+  <canRoam>true</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>false</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>work_dir=$(ssh $USER@$MASTER_IP &apos;pwd&apos;)
+
+#Cloning tpcds repo and running setup.sh 
+ssh $USER@$MASTER_IP /bin/bash &lt;&lt;EOT
+echo &apos;export WORKDIR=&apos;$work_dir&apos;&apos;&gt;&gt;~/.bashrc
+
+echo &apos;Removing existing tpcds setup folder&apos;
+rm -rf ${work_dir}/tpcds-setup &amp;&gt;&gt;/dev/null
+
+echo &apos;Cloning TPCDS repo at &apos;$work_dir&apos;&apos;
+git clone https://github.com/josiahsams/tpcds-setup
+echo &quot;------------------------------------------------&quot;
+cd ${work_dir}/tpcds-setup
+source ~/.bashrc
+echo &apos;Running setup.sh script to build TPCDS environment&apos;
+./setup.sh
+source ~/.bashrc  
+EOT
+echo &quot;------------------------------------------------&quot;
+#Running install_tpcdep.sh 
+ssh $USER@$MASTER_IP /bin/bash &lt;&lt;EOT
+cd ${work_dir}/tpcds-setup
+echo &apos;Running install_tpcdep.sh script to install other setups&apos;
+./utils/install_tpcdep.sh 
+EOT
+echo &quot;------------------------------------------------&quot;
+#Updating confi parameters in run.config and running genData.sh
+ssh $USER@$MASTER_IP /bin/bash &lt;&lt;EOT
+cd ${work_dir}/tpcds-setup
+echo &apos;updating the config parametrs&apos;
+sed -i &apos;s|DRIVER_MEM=20g|DRIVER_MEM=&apos;${DRIVER_MEM}&apos;|g&apos; ./conf/run.config
+sed -i &apos;s|DRIVER_CORES=10|DRIVER_CORES=&apos;${DRIVER_CORES}&apos;|g&apos; ./conf/run.config
+sed -i &apos;s|EXEC_MEM_OVERHEAD=1536|EXEC_MEM_OVERHEAD=&apos;${EXEC_MEM_OVERHEAD}&apos;|g&apos; ./conf/run.config
+sed -i &apos;s|SHUFFLE_PARTITIONS=64|SHUFFLE_PARTITIONS=&apos;${SHUFFLE_PARTITIONS}&apos;|g&apos; ./conf/run.config
+sed -i &apos;s|NUM_EXECUTORS=12|NUM_EXECUTORS=&apos;${NUM_EXECUTORS}&apos;|g&apos; ./conf/run.config
+sed -i &apos;s|EXEC_CORES=18|EXEC_CORES=&apos;${EXEC_CORES}&apos;|g&apos; ./conf/run.config
+sed -i &apos;s|EXEC_MEM=20g|EXEC_MEM=&apos;${EXEC_MEM}&apos;|g&apos; ./conf/run.config
+sed -i &apos;s|GC_THREADS=9|GC_THREADS=&apos;${GC_THREADS}&apos;|g&apos; ./conf/run.config
+
+echo &apos;Running genData.sh&apos;
+source ~/.bashrc
+./utils/genData.sh hdfs://$MASTER_IP:9000/tpcds-${DB_SIZE}GB ${DB_SIZE}
+EOT
+echo &quot;------------------------------------------------&quot;
+#Updating config parameters in CreateDB.sh and running it
+
+ssh $USER@$MASTER_IP /bin/bash &lt;&lt;EOT
+cd ${work_dir}/tpcds-setup
+echo &apos;updating the config parametrs in createDB.sh&apos;
+sed -i &apos;s|DRIVER_MEM=10g|DRIVER_MEM=&apos;${DRIVER_MEM}&apos;|g&apos; ./utils/createDB.sh
+sed -i &apos;s|DRIVER_CORES=6|DRIVER_CORES=&apos;${DRIVER_CORES}&apos;|g&apos; ./utils/createDB.sh
+sed -i &apos;s|EXEC_MEM_OVERHEAD=1536|EXEC_MEM_OVERHEAD=&apos;${EXEC_MEM_OVERHEAD}&apos;|g&apos; ./utils/createDB.sh
+sed -i &apos;s|SHUFFLE_PARTITIONS=64|SHUFFLE_PARTITIONS=&apos;${SHUFFLE_PARTITIONS}&apos;|g&apos; ./utils/createDB.sh
+sed -i &apos;s|NUM_EXECUTORS=8|NUM_EXECUTORS=&apos;${NUM_EXECUTORS}&apos;|g&apos; ./utils/createDB.sh
+sed -i &apos;s|EXEC_CORES=18|EXEC_CORES=&apos;${EXEC_CORES}&apos;|g&apos; ./utils/createDB.sh
+sed -i &apos;s|EXEC_MEM=20g|EXEC_MEM=&apos;${EXEC_MEM}&apos;|g&apos; ./utils/createDB.sh
+sed -i &apos;s|GC_THREADS=9|GC_THREADS=&apos;${GC_THREADS}&apos;|g&apos; ./utils/createDB.sh
+
+echo &apos;Running CrateDB.sh&apos;
+./utils/createDB.sh hdfs://$MASTER_IP:9000/tpcds-${DB_SIZE}GB ${DB_SIZE} tpcds${DB_SIZE}G
+EOT
+echo &quot;------------------------------------------------&quot;
+#Getting required variable in file to pass to downstream runbench job
+echo &apos;user=&apos;${USER}&apos;&apos; &gt; ~/tpcds_jenkins_var
+echo &apos;master_ip=&apos;${MASTER_IP}&apos;&apos; &gt;&gt; ~/tpcds_jenkins_var
+echo &apos;db_name=tpcds&apos;${DB_SIZE}&apos;G&apos; &gt;&gt; ~/tpcds_jenkins_var
+echo &apos;queries=&apos;${QUERIES}&apos;&apos; &gt;&gt; ~/tpcds_jenkins_var
+echo &apos;driver_mem=&apos;${DRIVER_MEM}&apos;&apos; &gt;&gt; ~/tpcds_jenkins_var
+echo &apos;driver_cores=&apos;${DRIVER_CORES}&apos;&apos; &gt;&gt; ~/tpcds_jenkins_var
+echo &apos;num_executors=&apos;${NUM_EXECUTORS}&apos;&apos; &gt;&gt; ~/tpcds_jenkins_var
+echo &apos;exec_core=&apos;${EXEC_CORES}&apos;&apos; &gt;&gt; ~/tpcds_jenkins_var
+echo &apos;exec_mem=&apos;${EXEC_MEM}&apos;&apos; &gt;&gt; ~/tpcds_jenkins_var
+echo &apos;query_iteration=&apos;${QUERY_ITERATION}&apos;&apos;&gt;&gt; ~/tpcds_jenkins_var
+</command>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers/>
+  <buildWrappers/>
+</project>
