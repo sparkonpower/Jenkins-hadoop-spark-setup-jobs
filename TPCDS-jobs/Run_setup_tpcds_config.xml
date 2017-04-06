@@ -9,12 +9,12 @@
         <hudson.model.TextParameterDefinition>
           <name>USER</name>
           <description>Linux user under whose home directory you want to setup TPCDS on master machine</description>
-          <defaultValue>testuser</defaultValue>
+          <defaultValue>hdp_test</defaultValue>
         </hudson.model.TextParameterDefinition>
         <hudson.model.TextParameterDefinition>
           <name>MASTER_IP</name>
           <description>IP of master machine where spark and hadoop is setup and TPCDS benchmark to be run</description>
-          <defaultValue>9.3.126.18</defaultValue>
+          <defaultValue>10.88.67.158</defaultValue>
         </hudson.model.TextParameterDefinition>
         <hudson.model.TextParameterDefinition>
           <name>DB_SIZE</name>
@@ -34,42 +34,42 @@
         <hudson.model.TextParameterDefinition>
           <name>DRIVER_MEM</name>
           <description>Default config parameter to run TPCDS. Please enter new value if you want to change it as per your environment</description>
-          <defaultValue>20g</defaultValue>
+          <defaultValue>2g</defaultValue>
         </hudson.model.TextParameterDefinition>
         <hudson.model.TextParameterDefinition>
           <name>DRIVER_CORES</name>
           <description>Default config parameter to run TPCDS. Please enter new value if you want to change it as per your environment</description>
-          <defaultValue>10</defaultValue>
+          <defaultValue>2</defaultValue>
         </hudson.model.TextParameterDefinition>
         <hudson.model.TextParameterDefinition>
           <name>EXEC_MEM_OVERHEAD</name>
           <description>Default config parameter to run TPCDS. Please enter new value if you want to change it as per your environment</description>
-          <defaultValue>1536</defaultValue>
+          <defaultValue>236</defaultValue>
         </hudson.model.TextParameterDefinition>
         <hudson.model.TextParameterDefinition>
           <name>SHUFFLE_PARTITIONS</name>
           <description>Default config parameter to run TPCDS. Please enter new value if you want to change it as per your environment</description>
-          <defaultValue>64</defaultValue>
+          <defaultValue>4</defaultValue>
         </hudson.model.TextParameterDefinition>
         <hudson.model.TextParameterDefinition>
           <name>NUM_EXECUTORS</name>
           <description>Default config parameter to run TPCDS. Please enter new value if you want to change it as per your environment</description>
-          <defaultValue>8</defaultValue>
+          <defaultValue>2</defaultValue>
         </hudson.model.TextParameterDefinition>
         <hudson.model.TextParameterDefinition>
           <name>EXEC_CORES</name>
           <description>Default config parameter to run TPCDS. Please enter new value if you want to change it as per your environment</description>
-          <defaultValue>18</defaultValue>
+          <defaultValue>2</defaultValue>
         </hudson.model.TextParameterDefinition>
         <hudson.model.TextParameterDefinition>
           <name>EXEC_MEM</name>
           <description>Default config parameter to run TPCDS. Please enter new value if you want to change it as per your environment</description>
-          <defaultValue>20g</defaultValue>
+          <defaultValue>2g</defaultValue>
         </hudson.model.TextParameterDefinition>
         <hudson.model.TextParameterDefinition>
           <name>GC_THREADS</name>
           <description>Default config parameter to run TPCDS. Please enter new value if you want to change it as per your environment</description>
-          <defaultValue>9</defaultValue>
+          <defaultValue>3</defaultValue>
         </hudson.model.TextParameterDefinition>
       </parameterDefinitions>
     </hudson.model.ParametersDefinitionProperty>
