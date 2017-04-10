@@ -34,7 +34,10 @@
 2. cd Jenkins-hadoop-spark-setup-jobs
   
 3. Execute below command on linux prompt to import Jenkins jobs
-
+  
+  For Spark build -
+  java -jar jenkins-cli.jar -noKeyAuth -s  http://localhost:8080/ create-job Spark_Weekly_Build_Runnable_dist < ./SPARK-build/Spark_Weekly_Build_Runnable_dist_config.xml 
+  
   For hadoop setup -
   java -jar jenkins-cli.jar -noKeyAuth -s  http://localhost:8080/ create-job Setup_hadoop_spark_cluster < ./hadoop-spark-setup/Setup_hadoop_spark_cluster_config.xml
   
