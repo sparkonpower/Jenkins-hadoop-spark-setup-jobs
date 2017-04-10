@@ -34,42 +34,42 @@
         <hudson.model.TextParameterDefinition>
           <name>DRIVER_MEM</name>
           <description>Default config parameter to run TPCDS. Please enter new value if you want to change it as per your environment</description>
-          <defaultValue>2g</defaultValue>
+          <defaultValue>20g</defaultValue>
         </hudson.model.TextParameterDefinition>
         <hudson.model.TextParameterDefinition>
           <name>DRIVER_CORES</name>
           <description>Default config parameter to run TPCDS. Please enter new value if you want to change it as per your environment</description>
-          <defaultValue>2</defaultValue>
+          <defaultValue>10</defaultValue>
         </hudson.model.TextParameterDefinition>
         <hudson.model.TextParameterDefinition>
           <name>EXEC_MEM_OVERHEAD</name>
           <description>Default config parameter to run TPCDS. Please enter new value if you want to change it as per your environment</description>
-          <defaultValue>236</defaultValue>
+          <defaultValue>1536</defaultValue>
         </hudson.model.TextParameterDefinition>
         <hudson.model.TextParameterDefinition>
           <name>SHUFFLE_PARTITIONS</name>
           <description>Default config parameter to run TPCDS. Please enter new value if you want to change it as per your environment</description>
-          <defaultValue>4</defaultValue>
+          <defaultValue>64</defaultValue>
         </hudson.model.TextParameterDefinition>
         <hudson.model.TextParameterDefinition>
           <name>NUM_EXECUTORS</name>
           <description>Default config parameter to run TPCDS. Please enter new value if you want to change it as per your environment</description>
-          <defaultValue>2</defaultValue>
+          <defaultValue>8</defaultValue>
         </hudson.model.TextParameterDefinition>
         <hudson.model.TextParameterDefinition>
           <name>EXEC_CORES</name>
           <description>Default config parameter to run TPCDS. Please enter new value if you want to change it as per your environment</description>
-          <defaultValue>2</defaultValue>
+          <defaultValue>18</defaultValue>
         </hudson.model.TextParameterDefinition>
         <hudson.model.TextParameterDefinition>
           <name>EXEC_MEM</name>
           <description>Default config parameter to run TPCDS. Please enter new value if you want to change it as per your environment</description>
-          <defaultValue>2g</defaultValue>
+          <defaultValue>20g</defaultValue>
         </hudson.model.TextParameterDefinition>
         <hudson.model.TextParameterDefinition>
           <name>GC_THREADS</name>
           <description>Default config parameter to run TPCDS. Please enter new value if you want to change it as per your environment</description>
-          <defaultValue>3</defaultValue>
+          <defaultValue>9</defaultValue>
         </hudson.model.TextParameterDefinition>
       </parameterDefinitions>
     </hudson.model.ParametersDefinitionProperty>
