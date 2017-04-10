@@ -1,6 +1,7 @@
-<?xml version="1.0" encoding="UTF-8"?><project>
+<?xml version='1.0' encoding='UTF-8'?>
+<project>
   <actions/>
-  <description/>
+  <description></description>
   <keepDependencies>false</keepDependencies>
   <properties/>
   <scm class="hudson.scm.NullSCM"/>
@@ -10,7 +11,7 @@
   <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
   <triggers>
     <jenkins.triggers.ReverseBuildTrigger>
-      <spec/>
+      <spec></spec>
       <upstreamProjects>Run_setup_tpcds</upstreamProjects>
       <threshold>
         <name>SUCCESS</name>
@@ -24,36 +25,36 @@
   <builders>
     <hudson.tasks.Shell>
       <command>#sourcing the variables from upstream job
-db_name=`cat ~/tpcds_jenkins_var | grep ^db_name | cut -f2 -d"="`
-master_ip=`cat ~/tpcds_jenkins_var | grep ^master_ip | cut -f2 -d"="`
-queries=`cat ~/tpcds_jenkins_var | grep ^queries | cut -f2 -d"="`
-user=`cat ~/tpcds_jenkins_var | grep ^user | cut -f2 -d"="`
-driver_mem=`cat ~/tpcds_jenkins_var | grep ^driver_mem | cut -f2 -d"="`
-driver_cores=`cat ~/tpcds_jenkins_var | grep ^driver_cores | cut -f2 -d"="`
-num_executors=`cat ~/tpcds_jenkins_var | grep ^num_executors | cut -f2 -d"="`
-exec_core=`cat ~/tpcds_jenkins_var | grep ^exec_core | cut -f2 -d"="`
-exec_mem=`cat ~/tpcds_jenkins_var | grep ^exec_mem | cut -f2 -d"="`
-query_iteration=`cat ~/tpcds_jenkins_var | grep ^query_iteration | cut -f2 -d"="`
+db_name=`cat ~/tpcds_jenkins_var | grep ^db_name | cut -f2 -d&quot;=&quot;`
+master_ip=`cat ~/tpcds_jenkins_var | grep ^master_ip | cut -f2 -d&quot;=&quot;`
+queries=`cat ~/tpcds_jenkins_var | grep ^queries | cut -f2 -d&quot;=&quot;`
+user=`cat ~/tpcds_jenkins_var | grep ^user | cut -f2 -d&quot;=&quot;`
+driver_mem=`cat ~/tpcds_jenkins_var | grep ^driver_mem | cut -f2 -d&quot;=&quot;`
+driver_cores=`cat ~/tpcds_jenkins_var | grep ^driver_cores | cut -f2 -d&quot;=&quot;`
+num_executors=`cat ~/tpcds_jenkins_var | grep ^num_executors | cut -f2 -d&quot;=&quot;`
+exec_core=`cat ~/tpcds_jenkins_var | grep ^exec_core | cut -f2 -d&quot;=&quot;`
+exec_mem=`cat ~/tpcds_jenkins_var | grep ^exec_mem | cut -f2 -d&quot;=&quot;`
+query_iteration=`cat ~/tpcds_jenkins_var | grep ^query_iteration | cut -f2 -d&quot;=&quot;`
 
-home_dir=$(ssh $user@$master_ip 'pwd')
+home_dir=$(ssh $user@$master_ip &apos;pwd&apos;)
 
 ssh $user@$master_ip /bin/bash &lt;&lt;EOT
 source ~/tpcds_jenkins_var
 cd $home_dir/tpcds-setup
-#sed -i 's|--driver-memory 22g|--driver-memory '${driver_mem}'|g' ./run_single.sh
-#sed -i 's|--driver-cores 10|--driver-cores '${driver_cores}'|g' ./run_single.sh
+#sed -i &apos;s|--driver-memory 22g|--driver-memory &apos;${driver_mem}&apos;|g&apos; ./run_single.sh
+#sed -i &apos;s|--driver-cores 10|--driver-cores &apos;${driver_cores}&apos;|g&apos; ./run_single.sh
 
-echo 'Running queries - '$queries''
+echo &apos;Running queries - &apos;$queries&apos;&apos;
 ./run_single.sh $queries $query_iteration $num_executors $exec_core $exec_mem $db_name
 EOT
-echo "------------------------------------------------"
+echo &quot;------------------------------------------------&quot;
 ssh $user@$master_ip /bin/bash &lt;&lt;EOT
 source ~/tpcds_jenkins_var
 cd $home_dir/tpcds-setup
-echo 'Running run_throughput.sh'
+echo &apos;Running run_throughput.sh&apos;
 ./run_throughput.sh $num_executors $exec_core $exec_mem $db_name 200
 EOT
-echo "------------------------------------------------"
+echo &quot;------------------------------------------------&quot;
 </command>
     </hudson.tasks.Shell>
   </builders>

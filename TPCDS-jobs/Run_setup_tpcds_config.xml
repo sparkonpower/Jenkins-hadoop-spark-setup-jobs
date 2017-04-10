@@ -9,12 +9,12 @@
         <hudson.model.TextParameterDefinition>
           <name>USER</name>
           <description>Linux user under whose home directory you want to setup TPCDS on master machine</description>
-          <defaultValue>hdp_test</defaultValue>
+          <defaultValue>testuser</defaultValue>
         </hudson.model.TextParameterDefinition>
         <hudson.model.TextParameterDefinition>
           <name>MASTER_IP</name>
           <description>IP of master machine where spark and hadoop is setup and TPCDS benchmark to be run</description>
-          <defaultValue>10.88.67.158</defaultValue>
+          <defaultValue>9.3.126.18</defaultValue>
         </hudson.model.TextParameterDefinition>
         <hudson.model.TextParameterDefinition>
           <name>DB_SIZE</name>
@@ -88,8 +88,8 @@
 #Cloning tpcds repo and running setup.sh 
 ssh $USER@$MASTER_IP /bin/bash &lt;&lt;EOT
 
-echo &apos;Removing existing tpcds setup folder&apos;
-rm -rf ${work_dir}/tpcds-setup &amp;&gt;&gt;/dev/null
+#echo &apos;Removing existing tpcds setup folder&apos;
+#rm -rf ${work_dir}/tpcds-setup &amp;&gt;&gt;/dev/null
 
 echo &apos;Cloning TPCDS repo at &apos;$work_dir&apos;&apos;
 git clone https://github.com/josiahsams/tpcds-setup
