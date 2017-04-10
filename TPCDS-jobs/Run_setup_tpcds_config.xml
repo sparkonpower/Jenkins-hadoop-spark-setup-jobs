@@ -88,8 +88,8 @@
 #Cloning tpcds repo and running setup.sh 
 ssh $USER@$MASTER_IP /bin/bash &lt;&lt;EOT
 
-echo &apos;Removing existing tpcds setup folder&apos;
-rm -rf ${work_dir}/tpcds-setup &amp;&gt;&gt;/dev/null
+#echo &apos;Removing existing tpcds setup folder&apos;
+#rm -rf ${work_dir}/tpcds-setup &amp;&gt;&gt;/dev/null
 
 echo &apos;Cloning TPCDS repo at &apos;$work_dir&apos;&apos;
 git clone https://github.com/josiahsams/tpcds-setup

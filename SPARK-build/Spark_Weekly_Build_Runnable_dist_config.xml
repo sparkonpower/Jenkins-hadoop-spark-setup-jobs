@@ -1,0 +1,121 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description></description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.TextParameterDefinition>
+          <name>BUILD_MACHINE</name>
+          <description>Please enter hostname or IP of machine where Spark will be built and tested.</description>
+          <defaultValue>10.88.67.158</defaultValue>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>USER</name>
+          <description>Enter the USER on the remote Build Machine under whom the build and testing will be done.</description>
+          <defaultValue>hdp_test</defaultValue>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.PasswordParameterDefinition>
+          <name>USER_PWD</name>
+          <description>Enter the password for the USER of BUILD_MACHINE</description>
+          <defaultValue>{AQAAABAAAABA3YAH7YLShadtI8F2+jwGCHtEf+UgkBFAHNpbHl5jcO25JaDZ1eodR4sQ/ILi/FoNgmeG+39QOEf32UR/TNwk2RnHNpoRMsiPKjnPSXwMDb0=}</defaultValue>
+        </hudson.model.PasswordParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>SPARK_BRANCH</name>
+          <description>Enter the Spark branch to be cloned and built.</description>
+          <defaultValue>2.0</defaultValue>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>HADOOP_PROFILE</name>
+          <description>Hadoop Profile you want for building cluster. Default is 2.7</description>
+          <defaultValue>2.7</defaultValue>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>BUILD_WITH_HIVE</name>
+          <description>Flag to be set if you want hive setup with JDBC support with spark setup. Please select Y/N.</description>
+          <defaultValue>N</defaultValue>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>JDK_VAL</name>
+          <description>Set OPENJDK or IBMJDK for building and testing Spark.</description>
+          <defaultValue>OPENJDK</defaultValue>
+        </hudson.model.TextParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+  </properties>
+  <scm class="hudson.scm.NullSCM"/>
+  <canRoam>true</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>false</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>#!/bin/bash
+
+jenkins_ip=$(/sbin/ip -o -4 addr list eth0 | awk &apos;{print $4}&apos; | cut -d/ -f1)
+ssh ${USER}@${BUILD_MACHINE} /bin/bash &lt;&lt;EOF
+echo &quot;These commands will be run on: $( uname -a )&quot;
+echo &quot;They are executed by: $( whoami )&quot;
+
+
+rm -rf spark
+
+git clone --recursive --depth 1 https://github.com/apache/spark.git -b branch-${SPARK_BRANCH}
+
+cd spark
+
+if [ ${JDK_VAL} = &quot;OPENJDK&quot; ]
+then
+  if [ &quot;$(. /etc/os-release; echo $NAME)&quot; = &quot;Ubuntu&quot; ]; then
+        echo -en &quot;Setting OpenJDK path and JAVA_HOME\n&quot;
+        export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-ppc64el
+        export PATH=$JAVA_HOME/bin:$JAVA_HOME/jre/bin:$PATH
+      else
+        echo -en &quot;Setting OpenJDK path and JAVA_HOME\n&quot;
+        export JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk
+        export PATH=$JAVA_HOME/bin:$JAVA_HOME/jre/bin:$PATH
+      fi
+elif [ ${JDK_VAL} = &quot;IBMJDK&quot; ]
+then
+  #export JAVA_HOME=$(grep -Po &apos;(?&lt;=USER_INSTALL_DIR=).*&apos; ${workDirR}/installer.properties)
+  export PATH=$JAVA_HOME/bin:$JAVA_HOME/jre/bin:$PATH
+fi
+
+java -version
+
+if [[ $BUILD_WITH_HIVE == &quot;y&quot; || $BUILD_WITH_HIVE == &quot;Y&quot; ]]
+then
+  echo &quot; Building with Hive and JDBC Support \n &quot;
+  #build/mvn -Pyarn -Phadoop-${hadoopVer} -Psparkr -Dhadoop.version=${hadoopVer}.0 -Phive -Phive-thriftserver -DskipTests clean package
+  ./dev/make-distribution.sh --name hadoop-${HADOOP_PROFILE} --tgz -Psparkr -Phadoop-${HADOOP_PROFILE} -Phive -Phive-thriftserver -Pyarn
+else 
+  echo &quot; Building without Hive and JDBC Support \n &quot;
+  #build/mvn -Pyarn -Phadoop-${hadoopVer} -Psparkr -Dhadoop.version=${hadoopVer}.0 -DskipTests clean package
+  ./dev/make-distribution.sh --name hadoop-${HADOOP_PROFILE} --tgz -Psparkr -Phadoop-${HADOOP_PROFILE} -Pyarn
+fi
+EOF
+
+ssh ${USER}@${BUILD_MACHINE} /bin/bash &lt;&lt;EOF
+cd spark
+scp spark-*-bin-hadoop-${HADOOP_PROFILE}.tgz jenkins@${jenkins_ip}:
+EOF
+
+exit 0</command>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers>
+    <hudson.tasks.BuildTrigger>
+      <childProjects>Setup_hadoop_spark_cluster</childProjects>
+      <threshold>
+        <name>SUCCESS</name>
+        <ordinal>0</ordinal>
+        <color>BLUE</color>
+        <completeBuild>true</completeBuild>
+      </threshold>
+    </hudson.tasks.BuildTrigger>
+  </publishers>
+  <buildWrappers/>
+</project>
