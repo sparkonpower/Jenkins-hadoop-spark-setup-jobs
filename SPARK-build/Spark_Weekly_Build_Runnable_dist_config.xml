@@ -9,17 +9,17 @@
         <hudson.model.TextParameterDefinition>
           <name>BUILD_MACHINE</name>
           <description>Please enter hostname or IP of machine where Spark will be built and tested.</description>
-          <defaultValue>10.88.67.158</defaultValue>
+          <defaultValue>9.3.126.18</defaultValue>
         </hudson.model.TextParameterDefinition>
         <hudson.model.TextParameterDefinition>
           <name>USER</name>
           <description>Enter the USER on the remote Build Machine under whom the build and testing will be done.</description>
-          <defaultValue>hdp_test</defaultValue>
+          <defaultValue>testuser</defaultValue>
         </hudson.model.TextParameterDefinition>
         <hudson.model.PasswordParameterDefinition>
           <name>USER_PWD</name>
           <description>Enter the password for the USER of BUILD_MACHINE</description>
-          <defaultValue>{AQAAABAAAABA3YAH7YLShadtI8F2+jwGCHtEf+UgkBFAHNpbHl5jcO25JaDZ1eodR4sQ/ILi/FoNgmeG+39QOEf32UR/TNwk2RnHNpoRMsiPKjnPSXwMDb0=}</defaultValue>
+          <defaultValue>{AQAAABAAAACATP5fB5omxZiu2YtYHrOR3CTgprvotNWUsyl3GcnulyFQ74pzpqgZ/U+n+WCT1+4dAtf6O6i6mg8uWSkI+XdOajGC7uHjtILW9cPr3M5gC7VNqkUcvUCsZBKbnesbQHzU6z1XC7Q47ReZ5vZlePQAh94MhUFmhx2aLnr4+hLeaoSFind6Hwk8Uo2hkL/LJI0v}</defaultValue>
         </hudson.model.PasswordParameterDefinition>
         <hudson.model.TextParameterDefinition>
           <name>SPARK_BRANCH</name>
@@ -34,12 +34,17 @@
         <hudson.model.TextParameterDefinition>
           <name>BUILD_WITH_HIVE</name>
           <description>Flag to be set if you want hive setup with JDBC support with spark setup. Please select Y/N.</description>
-          <defaultValue>N</defaultValue>
+          <defaultValue>Y</defaultValue>
         </hudson.model.TextParameterDefinition>
         <hudson.model.TextParameterDefinition>
           <name>JDK_VAL</name>
           <description>Set OPENJDK or IBMJDK for building and testing Spark.</description>
           <defaultValue>OPENJDK</defaultValue>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>GIT_URLL</name>
+          <description>Enter the Git Url which is used to clone spark</description>
+          <defaultValue>https://github.com/apache/spark.git</defaultValue>
         </hudson.model.TextParameterDefinition>
       </parameterDefinitions>
     </hudson.model.ParametersDefinitionProperty>
@@ -62,10 +67,11 @@ echo &quot;They are executed by: $( whoami )&quot;
 
 
 rm -rf spark
-
-git clone --recursive --depth 1 https://github.com/apache/spark.git -b branch-${SPARK_BRANCH}
+sudo kill -9 $(ps -ef | grep zin[c] | awk -F &quot; &quot; &apos;{print $2}&apos;)
+git clone --recursive --depth 1 ${GIT_URLL} -b branch-${SPARK_BRANCH}
 
 cd spark
+COMMIT_HASH=\$(git log -n 1 --pretty=format:&quot;%H&quot;)
 
 if [ ${JDK_VAL} = &quot;OPENJDK&quot; ]
 then
@@ -103,12 +109,17 @@ cd spark
 scp spark-*-bin-hadoop-${HADOOP_PROFILE}.tgz jenkins@${jenkins_ip}:
 EOF
 
+#Getting required variable in file to pass to downstream runbench job
+echo &apos;git_url=&apos;${GIT_URLL}&apos;&apos; &gt; ~/build_dist_jenkins_var
+echo &apos;last_commit_hash=&apos;${COMMIT_HASH}&apos;&apos; &gt;&gt; ~/build_dist_jenkins_var
+
+
 exit 0</command>
     </hudson.tasks.Shell>
   </builders>
   <publishers>
     <hudson.tasks.BuildTrigger>
-      <childProjects>Setup_hadoop_spark_cluster</childProjects>
+      <childProjects>Setup_spark</childProjects>
       <threshold>
         <name>SUCCESS</name>
         <ordinal>0</ordinal>
