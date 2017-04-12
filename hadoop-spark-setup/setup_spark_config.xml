@@ -35,20 +35,23 @@
     <hudson.tasks.Shell>
       <command>WORKDIR=$(ssh $USER@$MASTER_IP &quot;pwd&quot;)
 
-
+##Removing older sprk tgz files if exist and getting new file in WORKDIR
 ssh $USER@$MASTER_IP /bin/bash &lt;&lt;EOT
-rm $WORKDIR/spark-*-SNAPSHOT-bin-hadoop-*.tgz
+rm $WORKDIR/spark-*-SNAPSHOT-bin-hadoop-*.tgz &amp;&gt;&gt;/dev/null
 cp $WORKDIR/spark/spark-*-SNAPSHOT-bin-hadoop-*.tgz $WORKDIR
 EOT
 
+##Cloning repo for shell script to build sparl cluster
 ssh $USER@$MASTER_IP /bin/bash &lt;&lt;EOT
 echo &apos;Clonig repo Setup-spark-utils at location &apos;$WORKDIR&apos;&apos;
-#git clone https://github.com/nkalband/Spark-cluster-utils.git
+git clone https://github.com/nkalband/Spark-cluster-utils.git &amp;&gt;&gt;/dev/null
 EOT
+
+##Running shell script to build spark cluster
 
 ssh $USER@$MASTER_IP /bin/bash &lt;&lt;EOT
 cd Spark-cluster-utils
-echo &quot;Running setup.sh to setup spark cluster&quot;
+echo &quot;Running spark_setup.sh to setup spark cluster&quot;
 ./spark_setup.sh $MASTER_IP $SLAVE_IP
 EOT
 
@@ -57,7 +60,7 @@ EOT
   </builders>
   <publishers>
     <hudson.tasks.BuildTrigger>
-      <childProjects>Run_setup_tpcds</childProjects>
+      <childProjects>Run_benchmark_tpcds</childProjects>
       <threshold>
         <name>SUCCESS</name>
         <ordinal>0</ordinal>

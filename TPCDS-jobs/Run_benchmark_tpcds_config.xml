@@ -110,46 +110,35 @@ EOT
 
 echo &quot;------------------------------------------------&quot;
 
-ssh $USER@$MASTER_IP /bin/bash &lt;&lt;EOT
-cd $home_dir/tpcds-setup
-echo &apos;Running run_throughput.sh&apos;
-./run_throughput.sh $NUM_EXECUTORS $EXEC_CORES $EXEC_MEM tpcds${DB_SIZE}G 200
-EOT
+#ssh $USER@$MASTER_IP /bin/bash &lt;&lt;EOT
+#cd $home_dir/tpcds-setup
+#echo &apos;Running run_throughput.sh&apos;
+#./run_throughput.sh $NUM_EXECUTORS $EXEC_CORES $EXEC_MEM tpcds${DB_SIZE}G 200
+#EOT
 
 echo &quot;------------------------------------------------&quot;
 
 echo &apos;Parsing the logs and creating json file&apos;
 ssh $USER@$MASTER_IP /bin/bash &lt;&lt;EOF
-cd $home_dir/tpcds-setup/logs
-logDir=`pwd`
-log_file_name=$(ls -lrt  ${logDir} | tail -2 | head -1 | awk -F &quot; &quot; &apos;{print  $9 }&apos;)
-
-
-#Get last commit hash of git 
-#Usage: git log -n 1 [branch_name] branch_name(may be remote or local branch) is optional. Without branch_name it will show the latest commit of current branch.
-
-#last_commit=$(git log -n 1 --pretty=format:&quot;%H&quot;)
-
+logDir=$home_dir/tpcds-setup/logs
+log_file_name=\$(ls -lrt  \${logDir} | grep nohup | tail -2 | head -1 | awk -F &quot; &quot; &apos;{print  \$9 }&apos;)
+json_file_name=\$(echo \$log_file_name | cut -f 1 -d &apos;.&apos;).json
 master=${MASTER_IP}
-log_file=${logDir}/${log_file_name}
-json_file=$(echo $log_file | cut -f 1 -d &apos;.&apos;).json
-python tpcdsExtractJSONtoMongoDB.py $log_file $git_url $last_commit_hash $master
-scp ${json_file} ${jenkins_user}@${jenkins_ip}:
-rm -rf ${json_file}
-EOF
+log_file=\${logDir}/\${log_file_name}
+json_file=\$(echo \$log_file | cut -f 1 -d &apos;.&apos;).json
 
+rm -rf parseTPCDSlogsMongoDB
+git clone --recursive --depth 1 https://github.com/nirmannarang/parseTPCDSlogsMongoDB.git -b deploy
+cd parseTPCDSlogsMongoDB
+python tpcdsExtractJSONtoMongoDB.py \${log_file} ${git_url} ${last_commit_hash} \${master}
+scp \${json_file} ${jenkins_user}@${jenkins_ip}:
+ssh ${jenkins_user}@${jenkins_ip} /bin/bash &lt;&lt;EOT
+curl -i -X POST -H &quot;Accept: application/json&quot; -H &quot;Content-Type: application/json&quot; -d @\${json_file_name} http://9.3.126.252:9000/api/t_benchmark
+rm -rf \${json_file_name}
+EOT
 
-echo &quot;------------------------------------------------&quot;
-
-echo &apos;Putting the json string to mongoDB&apos;
-cd
-json_file=$(echo $log_file_name | cut -f 1 -d &apos;.&apos;).json
-curl -i -X POST -H &quot;Accept: application/json&quot; -H &quot;Content-Type: application/json&quot; -d @${json_file} http://9.3.126.252:9000/api/t_benchmark
-rm -rf $json_file
-
-
-
-</command>
+rm -rf \${json_file}
+EOF</command>
     </hudson.tasks.Shell>
   </builders>
   <publishers/>

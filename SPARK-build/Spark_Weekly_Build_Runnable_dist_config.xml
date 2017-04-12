@@ -61,17 +61,24 @@
       <command>#!/bin/bash
 
 jenkins_ip=$(/sbin/ip -o -4 addr list eth0 | awk &apos;{print $4}&apos; | cut -d/ -f1)
+jenkins_user=$( whoami )
 ssh ${USER}@${BUILD_MACHINE} /bin/bash &lt;&lt;EOF
 echo &quot;These commands will be run on: $( uname -a )&quot;
 echo &quot;They are executed by: $( whoami )&quot;
 
-
 rm -rf spark
-sudo kill -9 $(ps -ef | grep zin[c] | awk -F &quot; &quot; &apos;{print $2}&apos;)
+
+sudo kill -9 \$(sudo ps -ef | grep zin[c] | awk -F &quot; &quot; &apos;{print \$2}&apos;)
+
 git clone --recursive --depth 1 ${GIT_URLL} -b branch-${SPARK_BRANCH}
 
 cd spark
 COMMIT_HASH=\$(git log -n 1 --pretty=format:&quot;%H&quot;)
+
+ssh ${jenkins_user}@${jenkins_ip} /bin/bash &lt;&lt;EOT
+echo &apos;last_commit_hash=&apos;\${COMMIT_HASH}&apos;&apos; &gt; ~/build_dist_jenkins_var
+EOT
+
 
 if [ ${JDK_VAL} = &quot;OPENJDK&quot; ]
 then
@@ -110,9 +117,7 @@ scp spark-*-bin-hadoop-${HADOOP_PROFILE}.tgz jenkins@${jenkins_ip}:
 EOF
 
 #Getting required variable in file to pass to downstream runbench job
-echo &apos;git_url=&apos;${GIT_URLL}&apos;&apos; &gt; ~/build_dist_jenkins_var
-echo &apos;last_commit_hash=&apos;${COMMIT_HASH}&apos;&apos; &gt;&gt; ~/build_dist_jenkins_var
-
+echo &apos;git_url=&apos;${GIT_URLL}&apos;&apos; &gt;&gt; ~/build_dist_jenkins_var
 
 exit 0</command>
     </hudson.tasks.Shell>
