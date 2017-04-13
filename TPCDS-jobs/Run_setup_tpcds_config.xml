@@ -73,7 +73,9 @@
   <concurrentBuild>false</concurrentBuild>
   <builders>
     <hudson.tasks.Shell>
-      <command>work_dir=$(ssh $USER@$MASTER_IP &apos;pwd&apos;)
+      <command>#!/bin/bash -e
+
+work_dir=$(ssh $USER@$MASTER_IP &apos;pwd&apos;)
 
 #Cloning tpcds repo and running setup.sh 
 ssh $USER@$MASTER_IP /bin/bash &lt;&lt;EOT

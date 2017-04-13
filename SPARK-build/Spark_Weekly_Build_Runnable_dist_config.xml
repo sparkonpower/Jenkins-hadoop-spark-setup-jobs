@@ -58,7 +58,7 @@
   <concurrentBuild>false</concurrentBuild>
   <builders>
     <hudson.tasks.Shell>
-      <command>#!/bin/bash
+      <command>#!/bin/bash -e
 
 jenkins_ip=$(/sbin/ip -o -4 addr list eth0 | awk &apos;{print $4}&apos; | cut -d/ -f1)
 jenkins_user=$( whoami )
@@ -111,10 +111,6 @@ else
 fi
 EOF
 
-ssh ${USER}@${BUILD_MACHINE} /bin/bash &lt;&lt;EOF
-cd spark
-scp spark-*-bin-hadoop-${HADOOP_PROFILE}.tgz jenkins@${jenkins_ip}:
-EOF
 
 #Getting required variable in file to pass to downstream runbench job
 echo &apos;git_url=&apos;${GIT_URLL}&apos;&apos; &gt;&gt; ~/build_dist_jenkins_var

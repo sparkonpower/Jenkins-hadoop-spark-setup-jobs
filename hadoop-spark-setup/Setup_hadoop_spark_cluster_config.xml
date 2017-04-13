@@ -49,7 +49,9 @@ This is required to run spark benchmarks like Hibech and sparkbench</description
   <concurrentBuild>false</concurrentBuild>
   <builders>
     <hudson.tasks.Shell>
-      <command>WORKDIR=$(ssh $USER@$MASTER_HOSTNAME &quot;pwd&quot;)
+      <command>#!/bin/bash -e
+
+WORKDIR=$(ssh $USER@$MASTER_HOSTNAME &quot;pwd&quot;)
 
 ssh $USER@$MASTER_HOSTNAME /bin/bash &lt;&lt;EOT
 stop-all.sh 2&gt;&gt;/dev/null
@@ -84,16 +86,6 @@ rm spark-*-SNAPSHOT-bin-hadoop-*.tgz &amp;&gt;&gt;/dev/null
 </command>
     </hudson.tasks.Shell>
   </builders>
-  <publishers>
-    <hudson.tasks.BuildTrigger>
-      <childProjects>Run_setup_tpcds</childProjects>
-      <threshold>
-        <name>SUCCESS</name>
-        <ordinal>0</ordinal>
-        <color>BLUE</color>
-        <completeBuild>true</completeBuild>
-      </threshold>
-    </hudson.tasks.BuildTrigger>
-  </publishers>
+  <publishers/>
   <buildWrappers/>
 </project>

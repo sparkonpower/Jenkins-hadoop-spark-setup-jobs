@@ -33,7 +33,9 @@
   <concurrentBuild>false</concurrentBuild>
   <builders>
     <hudson.tasks.Shell>
-      <command>WORKDIR=$(ssh $USER@$MASTER_IP &quot;pwd&quot;)
+      <command>#!/bin/bash -e
+
+WORKDIR=$(ssh $USER@$MASTER_IP &quot;pwd&quot;)
 
 ##Removing older sprk tgz files if exist and getting new file in WORKDIR
 ssh $USER@$MASTER_IP /bin/bash &lt;&lt;EOT
@@ -44,7 +46,13 @@ EOT
 ##Cloning repo for shell script to build sparl cluster
 ssh $USER@$MASTER_IP /bin/bash &lt;&lt;EOT
 echo &apos;Clonig repo Setup-spark-utils at location &apos;$WORKDIR&apos;&apos;
-git clone https://github.com/nkalband/Spark-cluster-utils.git &amp;&gt;&gt;/dev/null
+if [ -d Spark-cluster-utils ]
+then 
+	cd Spark-cluster-utils
+    git fetch origin
+else
+	git clone https://github.com/nkalband/Spark-cluster-utils.git
+fi
 EOT
 
 ##Running shell script to build spark cluster
@@ -52,7 +60,7 @@ EOT
 ssh $USER@$MASTER_IP /bin/bash &lt;&lt;EOT
 cd Spark-cluster-utils
 echo &quot;Running spark_setup.sh to setup spark cluster&quot;
-./spark_setup.sh $MASTER_IP $SLAVE_IP
+#./spark_setup.sh $MASTER_IP $SLAVE_IP
 EOT
 
 </command>

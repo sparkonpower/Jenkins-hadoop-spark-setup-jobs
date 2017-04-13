@@ -94,7 +94,9 @@
   <concurrentBuild>false</concurrentBuild>
   <builders>
     <hudson.tasks.Shell>
-      <command>jenkins_ip=$(/sbin/ip -o -4 addr list eth0 | awk &apos;{print $4}&apos; | cut -d/ -f1)
+      <command>#!/bin/bash -e
+
+jenkins_ip=$(/sbin/ip -o -4 addr list eth0 | awk &apos;{print $4}&apos; | cut -d/ -f1)
 jenkins_user=$( whoami )
 
 last_commit_hash=`cat ~/build_dist_jenkins_var | grep ^last_commit_hash | cut -f2 -d&quot;=&quot;`
@@ -121,7 +123,7 @@ echo &quot;------------------------------------------------&quot;
 echo &apos;Parsing the logs and creating json file&apos;
 ssh $USER@$MASTER_IP /bin/bash &lt;&lt;EOF
 logDir=$home_dir/tpcds-setup/logs
-log_file_name=\$(ls -lrt  \${logDir} | grep nohup | tail -2 | head -1 | awk -F &quot; &quot; &apos;{print  \$9 }&apos;)
+log_file_name=\$(ls -lrt  \${logDir} | grep nohup | tail -1 | awk -F &quot; &quot; &apos;{print  \$9 }&apos;)
 json_file_name=\$(echo \$log_file_name | cut -f 1 -d &apos;.&apos;).json
 master=${MASTER_IP}
 log_file=\${logDir}/\${log_file_name}
@@ -131,12 +133,7 @@ rm -rf parseTPCDSlogsMongoDB
 git clone --recursive --depth 1 https://github.com/nirmannarang/parseTPCDSlogsMongoDB.git -b deploy
 cd parseTPCDSlogsMongoDB
 python tpcdsExtractJSONtoMongoDB.py \${log_file} ${git_url} ${last_commit_hash} \${master}
-scp \${json_file} ${jenkins_user}@${jenkins_ip}:
-ssh ${jenkins_user}@${jenkins_ip} /bin/bash &lt;&lt;EOT
 curl -i -X POST -H &quot;Accept: application/json&quot; -H &quot;Content-Type: application/json&quot; -d @\${json_file_name} http://9.3.126.252:9000/api/t_benchmark
-rm -rf \${json_file_name}
-EOT
-
 rm -rf \${json_file}
 EOF</command>
     </hudson.tasks.Shell>
