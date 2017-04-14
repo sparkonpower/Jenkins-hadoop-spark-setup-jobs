@@ -1,0 +1,35 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<flow-definition plugin="workflow-job@2.10">
+  <actions/>
+  <description></description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+      <triggers/>
+    </org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2.27">
+    <script>pipeline {
+    agent any
+    stages{
+        stage(&apos;Build Spark&apos;) {
+            steps{
+                build job: &apos;Spark_Weekly_Build_Runnable_dist_latest&apos;, parameters: [text(name: &apos;BUILD_MACHINE&apos;, value: &apos;10.88.67.158&apos;), text(name: &apos;USER&apos;, value: &apos;hdp_test&apos;),  text(name: &apos;SPARK_BRANCH&apos;, value: &apos;2.0&apos;), text(name: &apos;HADOOP_PROFILE&apos;, value: &apos;2.7&apos;), text(name: &apos;BUILD_WITH_HIVE&apos;, value: &apos;Y&apos;), text(name: &apos;JDK_VAL&apos;, value: &apos;OPENJDK&apos;), text(name: &apos;GIT_URLL&apos;, value: &apos;https://github.com/apache/spark.git&apos;)]
+            }
+        }
+        stage(&apos;Install Spark&apos;) {
+            steps{
+                build job: &apos;setup_spark_latest&apos;, parameters: [text(name: &apos;USER&apos;, value: &apos;hdp_test&apos;), text(name: &apos;MASTER_IP&apos;, value: &apos;10.88.67.158&apos;), text(name: &apos;SLAVE_IP&apos;, value: &apos;10.88.67.71,10.88.67.75&apos;)]
+            }
+        }
+        stage(&apos;Run Benchmark&apos;){
+            steps{
+                build job: &apos;Run_benchmark_tpcds_latest&apos;, parameters: [text(name: &apos;USER&apos;, value: &apos;hdp_test&apos;), text(name: &apos;MASTER_IP&apos;, value: &apos;10.88.67.158&apos;), text(name: &apos;DB_SIZE&apos;, value: &apos;1&apos;), text(name: &apos;QUERIES&apos;, value: &apos;q1,q3&apos;), text(name: &apos;QUERY_ITERATION&apos;, value: &apos;2&apos;), text(name: &apos;DRIVER_MEM&apos;, value: &apos;2g&apos;), text(name: &apos;DRIVER_CORES&apos;, value: &apos;2&apos;), text(name: &apos;EXEC_MEM_OVERHEAD&apos;, value: &apos;136&apos;), text(name: &apos;SHUFFLE_PARTITIONS&apos;, value: &apos;4&apos;), text(name: &apos;NUM_EXECUTORS&apos;, value: &apos;2&apos;), text(name: &apos;EXEC_CORES&apos;, value: &apos;2&apos;), text(name: &apos;EXEC_MEM&apos;, value: &apos;2g&apos;), text(name: &apos;GC_THREADS&apos;, value: &apos;2&apos;)]
+            }
+        }
+    }
+}</script>
+    <sandbox>true</sandbox>
+  </definition>
+  <triggers/>
+</flow-definition>
