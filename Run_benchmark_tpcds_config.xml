@@ -1,0 +1,143 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description></description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.TextParameterDefinition>
+          <name>USER</name>
+          <description>Linux user under whose home directory you want to setup TPCDS on master machine</description>
+          <defaultValue>hdp_test</defaultValue>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>MASTER_IP</name>
+          <description>IP of master machine where spark and hadoop is setup and TPCDS benchmark to be run</description>
+          <defaultValue>10.88.67.158</defaultValue>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>DB_SIZE</name>
+          <description>Size of tpcds DB in GB  e.g. 1/3/5</description>
+          <defaultValue>1</defaultValue>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>QUERIES</name>
+          <description>queries you want to run on tpcds DB e.g. (q1,q5,q12)</description>
+          <defaultValue>q3,q19</defaultValue>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>QUERY_ITERATION</name>
+          <description>Number of iteration of execution of query.Please enter new value if you want to change</description>
+          <defaultValue>2</defaultValue>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>DRIVER_MEM</name>
+          <description>Default config parameter to run TPCDS. Please enter new value if you want to change it as per your environment</description>
+          <defaultValue>2g</defaultValue>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>DRIVER_CORES</name>
+          <description>Default config parameter to run TPCDS. Please enter new value if you want to change it as per your environment</description>
+          <defaultValue>2</defaultValue>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>EXEC_MEM_OVERHEAD</name>
+          <description>Default config parameter to run TPCDS. Please enter new value if you want to change it as per your environment</description>
+          <defaultValue>136</defaultValue>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>SHUFFLE_PARTITIONS</name>
+          <description>Default config parameter to run TPCDS. Please enter new value if you want to change it as per your environment</description>
+          <defaultValue>4</defaultValue>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>NUM_EXECUTORS</name>
+          <description>Default config parameter to run TPCDS. Please enter new value if you want to change it as per your environment</description>
+          <defaultValue>2</defaultValue>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>EXEC_CORES</name>
+          <description>Default config parameter to run TPCDS. Please enter new value if you want to change it as per your environment</description>
+          <defaultValue>2</defaultValue>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>EXEC_MEM</name>
+          <description>Default config parameter to run TPCDS. Please enter new value if you want to change it as per your environment</description>
+          <defaultValue>2g</defaultValue>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>GC_THREADS</name>
+          <description>Default config parameter to run TPCDS. Please enter new value if you want to change it as per your environment</description>
+          <defaultValue>2</defaultValue>
+        </hudson.model.TextParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+    <org.jenkinsci.plugins.flow__plugin.FlowProjectProperty plugin="flow@1.3"/>
+  </properties>
+  <scm class="hudson.scm.NullSCM"/>
+  <canRoam>true</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>false</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>#!/bin/bash -e
+
+home_dir=$(ssh $USER@$MASTER_IP &apos;pwd&apos;)
+
+ssh $USER@$MASTER_IP /bin/bash &lt;&lt;EOT
+
+cd $home_dir/tpcds-setup
+echo &apos;Running queries - &apos;$QUERIES&apos;&apos;
+echo &quot;./run_single.sh $QUERIES $QUERY_ITERATION $NUM_EXECUTORS $EXEC_CORES $EXEC_MEM tpcds${DB_SIZE}G&quot;
+./run_single.sh $QUERIES $QUERY_ITERATION $NUM_EXECUTORS $EXEC_CORES $EXEC_MEM tpcds${DB_SIZE}G
+EOT
+
+echo &quot;------------------------------------------------&quot;
+
+echo &apos;Parsing the logs and creating json file&apos;
+ssh $USER@$MASTER_IP /bin/bash &lt;&lt;EOT
+logDir=$home_dir/tpcds-setup/logs
+log_file_name=\$(ls -lrt  \${logDir} | grep nohup | tail -1 | awk -F &quot; &quot; &apos;{print  \$9 }&apos;) 
+json_file_name=\$(echo \$log_file_name | cut -f 1 -d &apos;.&apos;).json
+echo &quot;\$log_file_name is parsed to \$json_file_name&quot;
+master=${MASTER_IP}
+log_file=\${logDir}/\${log_file_name}
+json_file=\$(echo \$log_file | cut -f 1 -d &apos;.&apos;).json
+
+cd $home_dir/spark
+git_url=\$(git remote get-url origin)
+last_commit_hash=\$(git log -n 1 --pretty=format:&quot;%H&quot;)
+
+echo &quot;------------------------------------------------&quot;
+
+cd $home_dir
+if [ -d parseTPCDSlogsMongoDB ]
+then 
+	cd parseTPCDSlogsMongoDB
+    git pull
+else
+	git clone --recursive --depth 1 https://github.com/nirmannarang/parseTPCDSlogsMongoDB.git -b deploy
+    cd parseTPCDSlogsMongoDB
+fi
+
+echo &quot;python tpcdsExtractJSONtoMongoDB.py \${log_file} \${git_url} \${last_commit_hash} \${master}&quot;
+python tpcdsExtractJSONtoMongoDB.py \${log_file} \${git_url} \${last_commit_hash} \${master}
+if [ \$? -ne 0 ]; then
+    echo &quot;Exiting !! No metrics found&quot;
+    exit 1
+fi
+echo &quot;curl -i -X POST -H \&quot;Accept: application/json\&quot; -H \&quot;Content-Type: application/json\&quot; -d @\${json_file_name} http://10.51.229.72:9000/api/t_benchmark&quot;
+curl -i -X POST -H &quot;Accept: application/json&quot; -H &quot;Content-Type: application/json&quot; -d @\${json_file} http://10.51.229.72:9000/api/t_benchmark
+
+echo &quot;------------------------------------------------&quot;
+EOT
+</command>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers/>
+  <buildWrappers/>
+</project>
