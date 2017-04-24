@@ -1,0 +1,41 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<flow-definition plugin="workflow-job@2.10">
+  <actions/>
+  <description></description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+      <triggers>
+        <hudson.triggers.TimerTrigger>
+          <spec>@daily</spec>
+        </hudson.triggers.TimerTrigger>
+      </triggers>
+    </org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2.29">
+    <script> pipeline {
+    agent any
+    stages{
+        stage(&apos;Build Spark&apos;) {
+            steps{
+              build job: &apos;Spark_Weekly_Build_Runnable_dist&apos;, parameters: [text(name: &apos;BUILD_MACHINE&apos;, value: &apos;9.3.126.18&apos;), text(name: &apos;USER&apos;, value: &apos;testuser&apos;), text(name: &apos;SPARK_BRANCH&apos;, value: &apos;2.0&apos;), text(name: &apos;HADOOP_PROFILE&apos;, value: &apos;2.7&apos;), text(name: &apos;BUILD_WITH_HIVE&apos;, value: &apos;Y&apos;), text(name: &apos;JDK_VAL&apos;, value: &apos;OPENJDK&apos;), text(name: &apos;GIT_URLL&apos;, value: &apos;https://github.com/apache/spark.git&apos;)]
+            }
+        }
+        stage(&apos;Install Spark&apos;) {
+            steps{
+                build job: &apos;Setup_spark&apos;, parameters: [text(name: &apos;USER&apos;, value: &apos;testuser&apos;), text(name: &apos;MASTER_IP&apos;, value: &apos;9.3.126.18&apos;)]    
+            }
+        }
+        stage(&apos;Run Benchmark&apos;){
+            steps{
+               build job: &apos;Run_benchmark_tpcds&apos;, parameters: [text(name: &apos;USER&apos;, value: &apos;testuser&apos;), text(name: &apos;MASTER_IP&apos;, value: &apos;9.3.126.18&apos;), text(name: &apos;DB_SIZE&apos;, value: &apos;1&apos;), text(name: &apos;QUERIES&apos;, value: &apos;all&apos;), text(name: &apos;QUERY_ITERATION&apos;, value: &apos;2&apos;), text(name: &apos;NUM_EXECUTORS&apos;, value: &apos;2&apos;), text(name: &apos;EXEC_CORES&apos;, value: &apos;2&apos;), text(name: &apos;EXEC_MEM&apos;, value: &apos;2g&apos;)]
+            }
+        }
+    }
+}
+
+</script>
+    <sandbox>true</sandbox>
+  </definition>
+  <triggers/>
+</flow-definition>

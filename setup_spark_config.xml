@@ -1,0 +1,70 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description></description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.TextParameterDefinition>
+          <name>USER</name>
+          <description></description>
+          <defaultValue>testuser</defaultValue>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>MASTER_IP</name>
+          <description>Master ip details of cluster</description>
+          <defaultValue>9.3.126.18</defaultValue>
+        </hudson.model.TextParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+  </properties>
+  <scm class="hudson.scm.NullSCM"/>
+  <canRoam>true</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>false</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>#!/bin/bash -e
+
+WORKDIR=$(ssh $USER@$MASTER_IP &quot;pwd&quot;)
+MASTER_HOST=$(ssh $USER@$MASTER_IP &quot;hostname&quot;)
+
+##Removing older sprk tgz files if exist and getting new file in WORKDIR
+ssh $USER@$MASTER_IP /bin/bash &lt;&lt;EOT
+if [ -f spark-*-SNAPSHOT-bin-hadoop-*.tgz ]
+then
+	rm $WORKDIR/spark-*-SNAPSHOT-bin-hadoop-*.tgz
+fi
+cp $WORKDIR/spark/spark-*-SNAPSHOT-bin-hadoop-*.tgz $WORKDIR
+EOT
+
+##Cloning repo for shell script to build sparl cluster
+ssh $USER@$MASTER_IP /bin/bash &lt;&lt;EOT
+echo &apos;Clonig repo Spark-cluster-utils at location &apos;$WORKDIR&apos;&apos;
+if [ -d Spark-cluster-utils ]
+then 
+	cd Spark-cluster-utils
+    git pull
+else
+	git clone https://github.com/nkalband/Spark-cluster-utils.git
+fi
+EOT
+
+##Running shell script to build spark cluster
+
+ssh $USER@$MASTER_IP /bin/bash &lt;&lt;EOT
+cd Spark-cluster-utils
+echo &quot;Running spark_setup.sh to setup spark cluster&quot;
+./spark_setup.sh $MASTER_HOST
+EOT
+
+</command>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers/>
+  <buildWrappers/>
+</project>
