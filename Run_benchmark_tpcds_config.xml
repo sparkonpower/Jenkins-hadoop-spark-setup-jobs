@@ -94,7 +94,7 @@ then
 	cd parseTPCDSlogsMongoDB
     git pull
 else
-	git clone --recursive --depth 1 https://github.com/nkalband/parseTPCDSlogsMongoDB.git -b test 
+	git clone --recursive --depth 1 https://github.com/nirmannarang/parseTPCDSlogsMongoDB.git 
     cd parseTPCDSlogsMongoDB
 fi
 
