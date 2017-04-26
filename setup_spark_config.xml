@@ -8,13 +8,13 @@
       <parameterDefinitions>
         <hudson.model.TextParameterDefinition>
           <name>USER</name>
-          <description></description>
-          <defaultValue>testuser</defaultValue>
+          <description>Unix user account where you want to create cluster</description>
+          <defaultValue>hdp_test</defaultValue>
         </hudson.model.TextParameterDefinition>
         <hudson.model.TextParameterDefinition>
           <name>MASTER_IP</name>
-          <description>Master ip details of cluster</description>
-          <defaultValue>9.3.126.18</defaultValue>
+          <description>Master ip / hostname details for cluster</description>
+          <defaultValue>10.88.67.158</defaultValue>
         </hudson.model.TextParameterDefinition>
       </parameterDefinitions>
     </hudson.model.ParametersDefinitionProperty>

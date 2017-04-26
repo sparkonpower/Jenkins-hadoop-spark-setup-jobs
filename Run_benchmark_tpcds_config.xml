@@ -9,12 +9,12 @@
         <hudson.model.TextParameterDefinition>
           <name>USER</name>
           <description>Linux user under whose home directory you want to setup TPCDS on master machine</description>
-          <defaultValue>testuser</defaultValue>
+          <defaultValue>hdp_test</defaultValue>
         </hudson.model.TextParameterDefinition>
         <hudson.model.TextParameterDefinition>
           <name>MASTER_IP</name>
           <description>IP of master machine where spark and hadoop is setup and TPCDS benchmark to be run</description>
-          <defaultValue>9.3.126.18</defaultValue>
+          <defaultValue>10.88.67.158</defaultValue>
         </hudson.model.TextParameterDefinition>
         <hudson.model.TextParameterDefinition>
           <name>DB_SIZE</name>
@@ -24,7 +24,7 @@
         <hudson.model.TextParameterDefinition>
           <name>QUERIES</name>
           <description>queries you want to run on tpcds DB e.g. (q1,q5,q12)</description>
-          <defaultValue>q3,q19</defaultValue>
+          <defaultValue>q2,q3,q5,q7,q9,q10,q12</defaultValue>
         </hudson.model.TextParameterDefinition>
         <hudson.model.TextParameterDefinition>
           <name>QUERY_ITERATION</name>
@@ -62,16 +62,23 @@
 
 home_dir=$(ssh $USER@$MASTER_IP &apos;pwd&apos;)
 
-echo &quot;Stoppig and Restarting the hadoop cluster daemons&quot;
-echo &quot;-------------------------------------------------&quot;
+echo &quot;------------------------------------------------&quot;
+echo &quot; Stopping and then restarting all hadoop daemons&quot;
 ssh $USER@$MASTER_IP &quot;stop-all.sh&quot;
 ssh $USER@$MASTER_IP &quot;start-all.sh&quot;
-echo &quot;Wating for 100s to get hadoop cluster out of safe mode&quot;
+echo &quot;------------------------------------------------&quot;
+echo &quot;Waiting for 100s to allow hadoop cluster to come out of safe mode&quot;
 sleep 100s
+echo &quot;------------------------------------------------&quot;
 
 ssh $USER@$MASTER_IP /bin/bash &lt;&lt;EOT
-
 cd $home_dir/tpcds-setup
+
+echo &quot;Setting driver mem and driver core values to use same as used for setting up tpcds (conf/run.config)&quot;
+
+sed -i &apos;s|driver-memory 22g|driver-memory \$DRIVER_MEM|g&apos; ./run_single.sh
+sed -i &apos;s|driver-cores 10|driver-cores \$DRIVER_CORES|g&apos; ./run_single.sh
+
 echo &apos;Running queries - &apos;$QUERIES&apos;&apos;
 echo &quot;./run_single.sh $QUERIES $QUERY_ITERATION $NUM_EXECUTORS $EXEC_CORES $EXEC_MEM tpcds${DB_SIZE}G&quot;
 ./run_single.sh $QUERIES $QUERY_ITERATION $NUM_EXECUTORS $EXEC_CORES $EXEC_MEM tpcds${DB_SIZE}G
@@ -81,19 +88,22 @@ echo &quot;------------------------------------------------&quot;
 
 
 ssh $USER@$MASTER_IP /bin/bash &lt;&lt;EOT
-
-
 cd $home_dir
 if [ -d parseTPCDSlogsMongoDB ]
 then 
 	cd parseTPCDSlogsMongoDB
     git pull
 else
-	git clone --recursive --depth 1 https://github.com/nirmannarang/parseTPCDSlogsMongoDB.git
+	git clone --recursive --depth 1 https://github.com/nkalband/parseTPCDSlogsMongoDB.git -b test 
     cd parseTPCDSlogsMongoDB
 fi
 
-./get_details.sh
+./get_cluster_conf.sh
+EOT
+
+ssh $USER@$MASTER_IP /bin/bash &lt;&lt;EOT
+cd parseTPCDSlogsMongoDB
+./get_spark_params.sh
 EOT
 
 echo &apos;Parsing the logs and creating json file&apos;
@@ -108,18 +118,20 @@ log_file=\${logDir}/\${log_file_name}
 json_file=\$(echo \$log_file | cut -f 1 -d &apos;.&apos;).json
 
 cd $home_dir/spark
+#git_url=\$(git remote get-url origin)
+git_branch=\$(git status | head -1 | cut -f3 -d &quot; &quot;)
 git_url=\$(git remote -v | tail -1 |awk -F &quot; &quot; &apos;{print \$2}&apos;)
 last_commit_hash=\$(git log -n 1 --pretty=format:&quot;%H&quot;)
 
 cd $home_dir/parseTPCDSlogsMongoDB
-echo &quot;python tpcdsExtractJSONtoMongoDB.py \${log_file} \${git_url} \${last_commit_hash} \${master} ${home_dir}/config_details &quot;
-python tpcdsExtractJSONtoMongoDB.py \${log_file} \${git_url} \${last_commit_hash} \${master} ${home_dir}/config_details
+echo &quot;python tpcdsExtractJSONtoMongoDB.py \${log_file} \${git_url} \${last_commit_hash} \${master} \${git_branch} ${home_dir}/cluster_info ${home_dir}/spark_params&quot;
+python tpcdsExtractJSONtoMongoDB.py \${log_file} \${git_url} \${last_commit_hash} \${master} \${git_branch} ${home_dir}/cluster_info ${home_dir}/spark_params
 if [ \$? -ne 0 ]; then
     echo &quot;Exiting !! No metrics found&quot;
     exit 1
 fi
-echo &quot;curl -i -X POST -H \&quot;Accept: application/json\&quot; -H \&quot;Content-Type: application/json\&quot; -d @\${json_file_name} http://9.3.126.252:9000/api/t_benchmark&quot;
-curl -i -X POST -H &quot;Accept: application/json&quot; -H &quot;Content-Type: application/json&quot; -d @\${json_file} http://9.3.126.252:9000/api/t_benchmark
+echo &quot;curl -i -X POST -H \&quot;Accept: application/json\&quot; -H \&quot;Content-Type: application/json\&quot; -d @\${json_file_name} http://10.51.229.72:9000/api/t_benchmark&quot;
+curl -i -X POST -H &quot;Accept: application/json&quot; -H &quot;Content-Type: application/json&quot; -d @\${json_file} http://10.51.229.72:9000/api/t_benchmark
 
 echo &quot;------------------------------------------------&quot;
 EOT
