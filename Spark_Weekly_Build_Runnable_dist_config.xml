@@ -17,9 +17,9 @@
           <defaultValue>hdp_test</defaultValue>
         </hudson.model.TextParameterDefinition>
         <hudson.model.TextParameterDefinition>
-          <name>SPARK_BRANCH</name>
-          <description>Enter the Spark branch to be cloned and built.</description>
-          <defaultValue>2.0</defaultValue>
+          <name>GIT_TAG</name>
+          <description>Git tag for spark repo which you want to clone for building spark</description>
+          <defaultValue>v2.2.0-rc2</defaultValue>
         </hudson.model.TextParameterDefinition>
         <hudson.model.TextParameterDefinition>
           <name>HADOOP_PROFILE</name>
@@ -43,7 +43,6 @@
         </hudson.model.TextParameterDefinition>
       </parameterDefinitions>
     </hudson.model.ParametersDefinitionProperty>
-    <org.jenkinsci.plugins.flow__plugin.FlowProjectProperty plugin="flow@1.3"/>
   </properties>
   <scm class="hudson.scm.NullSCM"/>
   <canRoam>true</canRoam>
@@ -66,10 +65,14 @@ sudo kill -9 \$(sudo ps -ef | grep zin[c] | awk -F &quot; &quot; &apos;{print \$
 if [ -d spark ]
 then 
 	cd spark
+    git checkout master
     git pull
+    git checkout ${GIT_TAG}
 else
-	git clone --recursive --depth 1 ${GIT_URLL} -b branch-${SPARK_BRANCH}
+	#git clone --recursive --depth 1 ${GIT_URLL} -b branch-${SPARK_BRANCH}
+    git clone --recursive ${GIT_URLL}
     cd spark
+    git checkout ${GIT_TAG}
 fi
 
 echo &quot;------------------------------------------------&quot;

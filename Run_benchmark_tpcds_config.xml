@@ -24,7 +24,7 @@
         <hudson.model.TextParameterDefinition>
           <name>QUERIES</name>
           <description>queries you want to run on tpcds DB e.g. (q1,q5,q12)</description>
-          <defaultValue>q2,q3,q5,q7,q9,q10,q12</defaultValue>
+          <defaultValue>all</defaultValue>
         </hudson.model.TextParameterDefinition>
         <hudson.model.TextParameterDefinition>
           <name>QUERY_ITERATION</name>
@@ -94,7 +94,7 @@ then
 	cd parseTPCDSlogsMongoDB
     git pull
 else
-	git clone --recursive --depth 1 https://github.com/nirmannarang/parseTPCDSlogsMongoDB.git 
+	git clone --recursive --depth 1 https://github.com/nkalband/parseTPCDSlogsMongoDB.git -b test2 
     cd parseTPCDSlogsMongoDB
 fi
 
@@ -119,13 +119,14 @@ json_file=\$(echo \$log_file | cut -f 1 -d &apos;.&apos;).json
 
 cd $home_dir/spark
 #git_url=\$(git remote get-url origin)
-git_branch=\$(git status | head -1 | cut -f3 -d &quot; &quot;)
+git_tag=\$(git describe --tags)
+#git_branch=\$(git status | head -1 | cut -f3 -d &quot; &quot;)
 git_url=\$(git remote -v | tail -1 |awk -F &quot; &quot; &apos;{print \$2}&apos;)
 last_commit_hash=\$(git log -n 1 --pretty=format:&quot;%H&quot;)
 
 cd $home_dir/parseTPCDSlogsMongoDB
-echo &quot;python tpcdsExtractJSONtoMongoDB.py \${log_file} \${git_url} \${last_commit_hash} \${master} \${git_branch} ${home_dir}/cluster_info ${home_dir}/spark_params&quot;
-python tpcdsExtractJSONtoMongoDB.py \${log_file} \${git_url} \${last_commit_hash} \${master} \${git_branch} ${home_dir}/cluster_info ${home_dir}/spark_params
+echo &quot;python tpcdsExtractJSONtoMongoDB.py \${log_file} \${git_url} \${last_commit_hash} \${master} \${git_tag} ${home_dir}/cluster_info ${home_dir}/spark_params&quot;
+python tpcdsExtractJSONtoMongoDB.py \${log_file} \${git_url} \${last_commit_hash} \${master} \${git_tag} ${home_dir}/cluster_info ${home_dir}/spark_params
 if [ \$? -ne 0 ]; then
     echo &quot;Exiting !! No metrics found&quot;
     exit 1
