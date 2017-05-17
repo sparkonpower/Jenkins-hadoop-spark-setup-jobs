@@ -2,7 +2,7 @@
 <project>
   <actions/>
   <description></description>
-  <keepDependencies>false</keepDependencies>
+  <keepDependencies>true</keepDependencies>
   <properties>
     <hudson.model.ParametersDefinitionProperty>
       <parameterDefinitions>
@@ -15,6 +15,11 @@
           <name>MASTER_IP</name>
           <description>IP of master machine where spark and hadoop is setup and TPCDS benchmark to be run</description>
           <defaultValue>10.88.67.158</defaultValue>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>GIT_TAG</name>
+          <description>Git tag for spark repo which you  have built spark and want to run benchmark</description>
+          <defaultValue>v2.2.0-rc2</defaultValue>
         </hudson.model.TextParameterDefinition>
         <hudson.model.TextParameterDefinition>
           <name>DB_SIZE</name>
@@ -61,7 +66,6 @@
       <command>#!/bin/bash -e
 
 home_dir=$(ssh $USER@$MASTER_IP &apos;pwd&apos;)
-
 echo &quot;------------------------------------------------&quot;
 echo &quot; Stopping and then restarting all hadoop daemons&quot;
 ssh $USER@$MASTER_IP &quot;stop-all.sh&quot;
@@ -119,7 +123,8 @@ json_file=\$(echo \$log_file | cut -f 1 -d &apos;.&apos;).json
 
 cd $home_dir/spark
 #git_url=\$(git remote get-url origin)
-git_tag=\$(git describe --tags)
+#git_tag=\$(git describe --tags)
+git_tag=$GIT_TAG
 #git_branch=\$(git status | head -1 | cut -f3 -d &quot; &quot;)
 git_url=\$(git remote -v | tail -1 |awk -F &quot; &quot; &apos;{print \$2}&apos;)
 last_commit_hash=\$(git log -n 1 --pretty=format:&quot;%H&quot;)
