@@ -1,0 +1,484 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<matrix-project plugin="matrix-project@1.7.1">
+  <actions/>
+  <description></description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.plugins.disk__usage.DiskUsageProperty plugin="disk-usage@0.28"/>
+    <com.synopsys.arc.jenkins.plugins.ownership.jobs.JobOwnerJobProperty plugin="ownership@0.8"/>
+    <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@1.25">
+      <autoRebuild>false</autoRebuild>
+      <rebuildDisabled>false</rebuildDisabled>
+    </com.sonyericsson.rebuild.RebuildSettings>
+    <com.synopsys.arc.jenkinsci.plugins.jobrestrictions.jobs.JobRestrictionProperty plugin="job-restrictions@0.4"/>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.TextParameterDefinition>
+          <name>SPARK_TAG_NAME</name>
+          <description>Enter the Spark branch to be cloned and built.</description>
+          <defaultValue>v2.2.0</defaultValue>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>HADOOP_PROFILE</name>
+          <description>Hadoop Profile you want for building cluster. Default is 2.7</description>
+          <defaultValue>2.7</defaultValue>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>HADOOP_VER</name>
+          <description></description>
+          <defaultValue>2.7.3</defaultValue>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>GIT_URLL</name>
+          <description>Enter the Git Url which is used to clone spark</description>
+          <defaultValue>https://github.com/apache/spark.git</defaultValue>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.ChoiceParameterDefinition>
+          <name>BUILD_WITH_HIVE</name>
+          <description>Flag to be set if you want hive setup with JDBC support with spark setup. Please select Y/N.</description>
+          <choices class="java.util.Arrays$ArrayList">
+            <a class="string-array">
+              <string>Y</string>
+              <string>N</string>
+            </a>
+          </choices>
+        </hudson.model.ChoiceParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+  </properties>
+  <scm class="hudson.scm.NullSCM"/>
+  <assignedNode>ART-SPARK-PERF-ppc64leUbuntu</assignedNode>
+  <canRoam>false</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers>
+    <hudson.triggers.TimerTrigger>
+      <spec>H 4 * * 1-5</spec>
+    </hudson.triggers.TimerTrigger>
+  </triggers>
+  <concurrentBuild>false</concurrentBuild>
+  <axes>
+    <hudson.matrix.TextAxis>
+      <name>JDK</name>
+      <values>
+        <string>OPENJDK</string>
+        <string>IBMJDK</string>
+      </values>
+    </hudson.matrix.TextAxis>
+    <hudson.matrix.LabelExpAxis>
+      <name>label_exp</name>
+      <values>
+        <string>ART-SPARK-PERF-ppc64leUbuntu</string>
+        <string>ART-SPARK-PERF-ppc64leRedHat</string>
+      </values>
+    </hudson.matrix.LabelExpAxis>
+  </axes>
+  <builders>
+    <org.jenkinsci.plugins.conditionalbuildstep.singlestep.SingleConditionalBuilder plugin="conditional-buildstep@1.3.5">
+      <condition class="org.jenkins_ci.plugins.run_condition.logic.And" plugin="run-condition@1.0">
+        <conditions>
+          <org.jenkins__ci.plugins.run__condition.logic.ConditionContainer>
+            <condition class="org.jenkins_ci.plugins.run_condition.core.StringsMatchCondition">
+              <arg1>$JDK</arg1>
+              <arg2>OPENJDK</arg2>
+              <ignoreCase>false</ignoreCase>
+            </condition>
+          </org.jenkins__ci.plugins.run__condition.logic.ConditionContainer>
+          <org.jenkins__ci.plugins.run__condition.logic.ConditionContainer>
+            <condition class="org.jenkins_ci.plugins.run_condition.core.StringsMatchCondition">
+              <arg1>$label_exp</arg1>
+              <arg2>ART-SPARK-PERF-ppc64leUbuntu</arg2>
+              <ignoreCase>false</ignoreCase>
+            </condition>
+          </org.jenkins__ci.plugins.run__condition.logic.ConditionContainer>
+        </conditions>
+      </condition>
+      <buildStep class="hudson.tasks.Shell">
+        <command>#!/bin/bash -e
+
+echo &quot;------------------------------------------------&quot;
+echo &quot;These commands will be run on: $( uname -a )&quot;
+echo &quot;They are executed by: $( whoami )&quot;
+
+
+if [[ $(sudo ps -ef | grep zin[c] | awk -F &quot; &quot; &apos;{print $2}&apos;) ]]; then
+    echo &quot;Killing already running zinc server&quot;
+    sudo kill -9 $(sudo ps -ef | grep zin[c] | awk -F &quot; &quot; &apos;{print $2}&apos;)
+else
+    echo &quot;Zinc server not running already&quot;
+fi
+
+
+if [ -d spark ]
+then 
+	cd spark
+    git checkout master
+    flag=`git pull`
+    git checkout ${SPARK_TAG_NAME}
+    
+else
+	git clone --recursive ${GIT_URLL} 
+    cd spark
+    git checkout ${SPARK_TAG_NAME}
+fi
+
+if [ &quot;$flag&quot; == &quot;Already up-to-date.&quot; ]
+then
+	echo &quot;No new changes pushed to Spark master branch &quot;
+    exit 0
+fi
+
+echo &quot;------------------------------------------------&quot;
+
+export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-ppc64el
+export PATH=$JAVA_HOME/bin:$JAVA_HOME/jre/bin:$PATH
+java -version
+pwd
+export SNAPPY_HOME=/usr/lib
+export LEVELDB_HOME=/home/builduser/jenkins/leveldb
+export LEVELDBJNI_HOME=/home/builduser/jenkins/leveldbjni
+export LIBRARY_PATH=${SNAPPY_HOME}
+export C_INCLUDE_PATH=${LIBRARY_PATH}
+export CPLUS_INCLUDE_PATH=${LIBRARY_PATH}
+
+echo &quot;------------------------------------------------&quot;
+
+if [[ $BUILD_WITH_HIVE == &quot;y&quot; || $BUILD_WITH_HIVE == &quot;Y&quot; ]]
+then
+  echo &quot; Building with Hive and JDBC Support \n &quot;
+  build/mvn -Psparkr -Phadoop-${HADOOP_PROFILE} -Dhadoop.version=${HADOOP_VER} -Phive -Phive-thriftserver -Pyarn -DskipTests clean package
+  build/mvn --fail-never -Pyarn -Phadoop-${HADOOP_PROFILE} -Dhadoop.version=${HADOOP_VER} -Phive -Phive-thriftserver test
+else 
+  echo &quot; Building without Hive and JDBC Support \n &quot;
+  build/mvn -Psparkr -Phadoop-${HADOOP_PROFILE} -Dhadoop.version=${HADOOP_VER} -Pyarn -DskipTests clean package
+  build/mvn --fail-never -Pyarn -Phadoop-${HADOOP_PROFILE} -Dhadoop.version=${HADOOP_VER} test
+fi
+echo &quot;------------------------------------------------&quot;
+</command>
+      </buildStep>
+      <runner class="org.jenkins_ci.plugins.run_condition.BuildStepRunner$Fail" plugin="run-condition@1.0"/>
+    </org.jenkinsci.plugins.conditionalbuildstep.singlestep.SingleConditionalBuilder>
+    <org.jenkinsci.plugins.conditionalbuildstep.singlestep.SingleConditionalBuilder plugin="conditional-buildstep@1.3.5">
+      <condition class="org.jenkins_ci.plugins.run_condition.logic.And" plugin="run-condition@1.0">
+        <conditions>
+          <org.jenkins__ci.plugins.run__condition.logic.ConditionContainer>
+            <condition class="org.jenkins_ci.plugins.run_condition.core.StringsMatchCondition">
+              <arg1>$JDK</arg1>
+              <arg2>IBMJDK</arg2>
+              <ignoreCase>false</ignoreCase>
+            </condition>
+          </org.jenkins__ci.plugins.run__condition.logic.ConditionContainer>
+          <org.jenkins__ci.plugins.run__condition.logic.ConditionContainer>
+            <condition class="org.jenkins_ci.plugins.run_condition.core.StringsMatchCondition">
+              <arg1>$label_exp</arg1>
+              <arg2>ART-SPARK-PERF-ppc64leUbuntu</arg2>
+              <ignoreCase>false</ignoreCase>
+            </condition>
+          </org.jenkins__ci.plugins.run__condition.logic.ConditionContainer>
+        </conditions>
+      </condition>
+      <buildStep class="hudson.tasks.Shell">
+        <command>#!/bin/bash -e
+
+echo &quot;------------------------------------------------&quot;
+echo &quot;These commands will be run on: $( uname -a )&quot;
+echo &quot;They are executed by: $( whoami )&quot;
+
+
+if [[ $(sudo ps -ef | grep zin[c] | awk -F &quot; &quot; &apos;{print $2}&apos;) ]]; then
+    echo &quot;Killing already running zinc server&quot;
+    sudo kill -9 $(sudo ps -ef | grep zin[c] | awk -F &quot; &quot; &apos;{print $2}&apos;)
+else
+    echo &quot;Zinc server not running already&quot;
+fi
+
+
+if [ -d spark ]
+then 
+	cd spark
+    git checkout master
+    flag=`git pull`
+    git checkout ${SPARK_TAG_NAME}
+else
+	git clone --recursive ${GIT_URLL} 
+    cd spark
+    git checkout ${SPARK_TAG_NAME}
+fi
+
+
+if [ &quot;$flag&quot; == &quot;Already up-to-date.&quot; ]
+then
+	echo &quot;No new changes pushed to Spark master branch&quot;
+    exit 0
+fi
+
+echo &quot;------------------------------------------------&quot;
+
+export JAVA_HOME=/home/builduser/IBMJAVA/ibm-java-ppc64le-80
+export PATH=$JAVA_HOME/bin:$JAVA_HOME/jre/bin:$PATH
+java -version
+
+export SNAPPY_HOME=/usr/lib
+export LEVELDB_HOME=/home/builduser/jenkins/leveldb
+export LEVELDBJNI_HOME=/home/builduser/jenkins/leveldbjni
+export LIBRARY_PATH=${SNAPPY_HOME}
+export C_INCLUDE_PATH=${LIBRARY_PATH}
+export CPLUS_INCLUDE_PATH=${LIBRARY_PATH}
+
+echo &quot;------------------------------------------------&quot;
+
+if [[ $BUILD_WITH_HIVE == &quot;y&quot; || $BUILD_WITH_HIVE == &quot;Y&quot; ]]
+then
+  echo &quot; Building with Hive and JDBC Support \n &quot;
+  build/mvn -Psparkr -Phadoop-${HADOOP_PROFILE} -Dhadoop.version=${HADOOP_VER} -Phive -Phive-thriftserver -Pyarn -DskipTests clean package
+  build/mvn --fail-never -Pyarn -Phadoop-${HADOOP_PROFILE} -Dhadoop.version=${HADOOP_VER} -Phive -Phive-thriftserver test
+else 
+  echo &quot; Building without Hive and JDBC Support \n &quot;
+  build/mvn -Psparkr -Phadoop-${HADOOP_PROFILE} -Dhadoop.version=${HADOOP_VER} -Pyarn -DskipTests clean package
+  build/mvn --fail-never -Pyarn -Phadoop-${HADOOP_PROFILE} -Dhadoop.version=${HADOOP_VER} test
+fi
+echo &quot;------------------------------------------------&quot;
+
+</command>
+      </buildStep>
+      <runner class="org.jenkins_ci.plugins.run_condition.BuildStepRunner$Fail" plugin="run-condition@1.0"/>
+    </org.jenkinsci.plugins.conditionalbuildstep.singlestep.SingleConditionalBuilder>
+    <org.jenkinsci.plugins.conditionalbuildstep.singlestep.SingleConditionalBuilder plugin="conditional-buildstep@1.3.5">
+      <condition class="org.jenkins_ci.plugins.run_condition.logic.And" plugin="run-condition@1.0">
+        <conditions>
+          <org.jenkins__ci.plugins.run__condition.logic.ConditionContainer>
+            <condition class="org.jenkins_ci.plugins.run_condition.core.StringsMatchCondition">
+              <arg1>$JDK</arg1>
+              <arg2>OPENJDK</arg2>
+              <ignoreCase>false</ignoreCase>
+            </condition>
+          </org.jenkins__ci.plugins.run__condition.logic.ConditionContainer>
+          <org.jenkins__ci.plugins.run__condition.logic.ConditionContainer>
+            <condition class="org.jenkins_ci.plugins.run_condition.core.StringsMatchCondition">
+              <arg1>$label_exp</arg1>
+              <arg2>ART-SPARK-PERF-ppc64leRedHat</arg2>
+              <ignoreCase>false</ignoreCase>
+            </condition>
+          </org.jenkins__ci.plugins.run__condition.logic.ConditionContainer>
+        </conditions>
+      </condition>
+      <buildStep class="hudson.tasks.Shell">
+        <command>#!/bin/bash -e
+
+echo &quot;------------------------------------------------&quot;
+echo &quot;These commands will be run on: $( uname -a )&quot;
+echo &quot;They are executed by: $( whoami )&quot;
+
+
+if [[ $(sudo ps -ef | grep zin[c] | awk -F &quot; &quot; &apos;{print $2}&apos;) ]]; then
+    echo &quot;Killing already running zinc server&quot;
+    sudo kill -9 $(sudo ps -ef | grep zin[c] | awk -F &quot; &quot; &apos;{print $2}&apos;)
+else
+    echo &quot;Zinc server not running already&quot;
+fi
+
+
+if [ -d spark ]
+then 
+	cd spark
+    git checkout master
+    flag=`git pull`
+    git checkout ${SPARK_TAG_NAME}
+else
+	git clone --recursive ${GIT_URLL} 
+    cd spark
+    git checkout ${SPARK_TAG_NAME}
+fi
+
+if [ &quot;$flag&quot; == &quot;Already up-to-date.&quot; ]
+then
+	echo &quot;No new changes pushed to Spark master branch&quot;
+    exit 0
+fi
+
+echo &quot;------------------------------------------------&quot;
+export JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk
+export PATH=$JAVA_HOME/bin:$JAVA_HOME/jre/bin:$PATH
+java -version
+export JAVA_TOOL_OPTIONS=-Dos.arch=ppc64le
+export SNAPPY_HOME=/usr/lib64
+export LEVELDB_HOME=/home/builduser/jenkins/leveldb
+export LEVELDBJNI_HOME=/home/builduser/jenkins/leveldbjni
+export LIBRARY_PATH=${SNAPPY_HOME}
+export C_INCLUDE_PATH=${LIBRARY_PATH}
+export CPLUS_INCLUDE_PATH=${LIBRARY_PATH}
+
+echo &quot;------------------------------------------------&quot;
+
+if [[ $BUILD_WITH_HIVE == &quot;y&quot; || $BUILD_WITH_HIVE == &quot;Y&quot; ]]
+then
+  echo &quot; Building with Hive and JDBC Support \n &quot;
+  build/mvn -Psparkr -Phadoop-${HADOOP_PROFILE} -Dhadoop.version=${HADOOP_VER} -Phive -Phive-thriftserver -Pyarn -DskipTests clean package
+  build/mvn --fail-never -Pyarn -Phadoop-${HADOOP_PROFILE} -Dhadoop.version=${HADOOP_VER} -Phive -Phive-thriftserver test
+else 
+  echo &quot; Building without Hive and JDBC Support \n &quot;
+  build/mvn -Psparkr -Phadoop-${HADOOP_PROFILE} -Dhadoop.version=${HADOOP_VER} -Pyarn -DskipTests clean package
+  build/mvn --fail-never -Pyarn -Phadoop-${HADOOP_PROFILE} -Dhadoop.version=${HADOOP_VER} test
+fi
+echo &quot;------------------------------------------------&quot;
+
+</command>
+      </buildStep>
+      <runner class="org.jenkins_ci.plugins.run_condition.BuildStepRunner$Fail" plugin="run-condition@1.0"/>
+    </org.jenkinsci.plugins.conditionalbuildstep.singlestep.SingleConditionalBuilder>
+    <org.jenkinsci.plugins.conditionalbuildstep.singlestep.SingleConditionalBuilder plugin="conditional-buildstep@1.3.5">
+      <condition class="org.jenkins_ci.plugins.run_condition.logic.And" plugin="run-condition@1.0">
+        <conditions>
+          <org.jenkins__ci.plugins.run__condition.logic.ConditionContainer>
+            <condition class="org.jenkins_ci.plugins.run_condition.core.StringsMatchCondition">
+              <arg1>$JDK</arg1>
+              <arg2>IBMJDK</arg2>
+              <ignoreCase>false</ignoreCase>
+            </condition>
+          </org.jenkins__ci.plugins.run__condition.logic.ConditionContainer>
+          <org.jenkins__ci.plugins.run__condition.logic.ConditionContainer>
+            <condition class="org.jenkins_ci.plugins.run_condition.core.StringsMatchCondition">
+              <arg1>$label_exp</arg1>
+              <arg2>ART-SPARK-PERF-ppc64leRedHat</arg2>
+              <ignoreCase>false</ignoreCase>
+            </condition>
+          </org.jenkins__ci.plugins.run__condition.logic.ConditionContainer>
+        </conditions>
+      </condition>
+      <buildStep class="hudson.tasks.Shell">
+        <command>#!/bin/bash -e
+
+echo &quot;------------------------------------------------&quot;
+echo &quot;These commands will be run on: $( uname -a )&quot;
+echo &quot;They are executed by: $( whoami )&quot;
+
+
+if [[ $(sudo ps -ef | grep zin[c] | awk -F &quot; &quot; &apos;{print $2}&apos;) ]]; then
+    echo &quot;Killing already running zinc server&quot;
+    sudo kill -9 $(sudo ps -ef | grep zin[c] | awk -F &quot; &quot; &apos;{print $2}&apos;)
+else
+    echo &quot;Zinc server not running already&quot;
+fi
+
+if [ -d spark ]
+then 
+	cd spark
+    git checkout master
+    flag=`git pull`
+    git checkout ${SPARK_TAG_NAME}
+else
+	git clone --recursive ${GIT_URLL} 
+    cd spark
+    git checkout ${SPARK_TAG_NAME}
+fi
+
+if [ &quot;$flag&quot; == &quot;Already up-to-date.&quot; ]
+then
+	echo &quot;No new changes pushed to Spark master branch&quot;
+    exit 0
+fi
+
+echo &quot;------------------------------------------------&quot;
+export JAVA_HOME=/home/builduser/IBMJAVA/ibm-java-ppc64le-80
+export PATH=$JAVA_HOME/bin:$JAVA_HOME/jre/bin:$PATH
+java -version
+export JAVA_TOOL_OPTIONS=-Dos.arch=ppc64le
+export SNAPPY_HOME=/usr/lib64
+export LEVELDB_HOME=/home/builduser/jenkins/leveldb
+export LEVELDBJNI_HOME=/home/builduser/jenkins/leveldbjni
+export LIBRARY_PATH=${SNAPPY_HOME}
+export C_INCLUDE_PATH=${LIBRARY_PATH}
+export CPLUS_INCLUDE_PATH=${LIBRARY_PATH}
+
+echo &quot;------------------------------------------------&quot;
+
+if [[ $BUILD_WITH_HIVE == &quot;y&quot; || $BUILD_WITH_HIVE == &quot;Y&quot; ]]
+then
+  echo &quot; Building with Hive and JDBC Support \n &quot;
+  build/mvn -Psparkr -Phadoop-${HADOOP_PROFILE} -Dhadoop.version=${HADOOP_VER} -Phive -Phive-thriftserver -Pyarn -DskipTests clean package
+  build/mvn --fail-never -Pyarn -Phadoop-${HADOOP_PROFILE} -Dhadoop.version=${HADOOP_VER} -Phive -Phive-thriftserver test
+else 
+  echo &quot; Building without Hive and JDBC Support \n &quot;
+  build/mvn -Psparkr -Phadoop-${HADOOP_PROFILE} -Dhadoop.version=${HADOOP_VER} -Pyarn -DskipTests clean package
+  build/mvn --fail-never -Pyarn -Phadoop-${HADOOP_PROFILE} -Dhadoop.version=${HADOOP_VER} test
+fi
+echo &quot;------------------------------------------------&quot;
+
+</command>
+      </buildStep>
+      <runner class="org.jenkins_ci.plugins.run_condition.BuildStepRunner$Fail" plugin="run-condition@1.0"/>
+    </org.jenkinsci.plugins.conditionalbuildstep.singlestep.SingleConditionalBuilder>
+  </builders>
+  <publishers>
+    <hudson.tasks.junit.JUnitResultArchiver plugin="junit@1.15">
+      <testResults>**/target/surefire-reports/*.xml</testResults>
+      <keepLongStdio>false</keepLongStdio>
+      <healthScaleFactor>1.0</healthScaleFactor>
+      <allowEmptyResults>false</allowEmptyResults>
+    </hudson.tasks.junit.JUnitResultArchiver>
+    <hudson.plugins.emailext.ExtendedEmailPublisher plugin="email-ext@2.44">
+      <recipientList>mkhatoon@us.ibm.com,maheshsa@us.ibm.com,shardul@us.ibm.com</recipientList>
+      <configuredTriggers>
+        <hudson.plugins.emailext.plugins.trigger.FailureTrigger>
+          <email>
+            <subject>$PROJECT_DEFAULT_SUBJECT</subject>
+            <body>$PROJECT_DEFAULT_CONTENT</body>
+            <recipientProviders>
+              <hudson.plugins.emailext.plugins.recipients.ListRecipientProvider/>
+            </recipientProviders>
+            <attachmentsPattern></attachmentsPattern>
+            <attachBuildLog>false</attachBuildLog>
+            <compressBuildLog>false</compressBuildLog>
+            <replyTo>$PROJECT_DEFAULT_REPLYTO</replyTo>
+            <contentType>project</contentType>
+          </email>
+        </hudson.plugins.emailext.plugins.trigger.FailureTrigger>
+        <hudson.plugins.emailext.plugins.trigger.UnstableTrigger>
+          <email>
+            <subject>$PROJECT_DEFAULT_SUBJECT</subject>
+            <body>$PROJECT_DEFAULT_CONTENT</body>
+            <recipientProviders>
+              <hudson.plugins.emailext.plugins.recipients.ListRecipientProvider/>
+            </recipientProviders>
+            <attachmentsPattern></attachmentsPattern>
+            <attachBuildLog>false</attachBuildLog>
+            <compressBuildLog>false</compressBuildLog>
+            <replyTo>$PROJECT_DEFAULT_REPLYTO</replyTo>
+            <contentType>project</contentType>
+          </email>
+        </hudson.plugins.emailext.plugins.trigger.UnstableTrigger>
+        <hudson.plugins.emailext.plugins.trigger.SuccessTrigger>
+          <email>
+            <subject>$PROJECT_DEFAULT_SUBJECT</subject>
+            <body>$PROJECT_DEFAULT_CONTENT</body>
+            <recipientProviders>
+              <hudson.plugins.emailext.plugins.recipients.ListRecipientProvider/>
+            </recipientProviders>
+            <attachmentsPattern></attachmentsPattern>
+            <attachBuildLog>false</attachBuildLog>
+            <compressBuildLog>false</compressBuildLog>
+            <replyTo>$PROJECT_DEFAULT_REPLYTO</replyTo>
+            <contentType>project</contentType>
+          </email>
+        </hudson.plugins.emailext.plugins.trigger.SuccessTrigger>
+      </configuredTriggers>
+      <contentType>text/plain</contentType>
+      <defaultSubject>$DEFAULT_SUBJECT</defaultSubject>
+      <defaultContent>$DEFAULT_CONTENT</defaultContent>
+      <attachmentsPattern></attachmentsPattern>
+      <presendScript>$DEFAULT_PRESEND_SCRIPT</presendScript>
+      <postsendScript>$DEFAULT_POSTSEND_SCRIPT</postsendScript>
+      <attachBuildLog>false</attachBuildLog>
+      <compressBuildLog>false</compressBuildLog>
+      <replyTo></replyTo>
+      <saveOutput>false</saveOutput>
+      <disabled>false</disabled>
+      <matrixTriggerMode>ONLY_PARENT</matrixTriggerMode>
+    </hudson.plugins.emailext.ExtendedEmailPublisher>
+  </publishers>
+  <buildWrappers/>
+  <executionStrategy class="hudson.matrix.DefaultMatrixExecutionStrategyImpl">
+    <runSequentially>true</runSequentially>
+  </executionStrategy>
+</matrix-project>
