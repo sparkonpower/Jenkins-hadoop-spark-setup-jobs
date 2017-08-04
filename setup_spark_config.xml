@@ -8,13 +8,13 @@
       <parameterDefinitions>
         <hudson.model.TextParameterDefinition>
           <name>USER</name>
-          <description></description>
-          <defaultValue>testuser</defaultValue>
+          <description>Unix user account where you want to create cluster</description>
+          <defaultValue>hdp_test</defaultValue>
         </hudson.model.TextParameterDefinition>
         <hudson.model.TextParameterDefinition>
           <name>MASTER_IP</name>
-          <description>Master ip details of cluster</description>
-          <defaultValue>9.3.126.18</defaultValue>
+          <description>Master ip / hostname details for cluster</description>
+          <defaultValue>10.88.67.158</defaultValue>
         </hudson.model.TextParameterDefinition>
       </parameterDefinitions>
     </hudson.model.ParametersDefinitionProperty>
@@ -35,11 +35,11 @@ MASTER_HOST=$(ssh $USER@$MASTER_IP &quot;hostname&quot;)
 
 ##Removing older sprk tgz files if exist and getting new file in WORKDIR
 ssh $USER@$MASTER_IP /bin/bash &lt;&lt;EOT
-if [ -f spark-*-SNAPSHOT-bin-hadoop-*.tgz ]
+if [ -f spark-*-bin-hadoop-*.tgz ]
 then
-	rm $WORKDIR/spark-*-SNAPSHOT-bin-hadoop-*.tgz
+	rm $WORKDIR/spark-*-bin-hadoop-*.tgz
 fi
-cp $WORKDIR/spark/spark-*-SNAPSHOT-bin-hadoop-*.tgz $WORKDIR
+mv $WORKDIR/spark/spark-*-bin-hadoop-*.tgz $WORKDIR
 EOT
 
 ##Cloning repo for shell script to build sparl cluster
@@ -48,7 +48,7 @@ echo &apos;Clonig repo Spark-cluster-utils at location &apos;$WORKDIR&apos;&apos
 if [ -d Spark-cluster-utils ]
 then 
 	cd Spark-cluster-utils
-    git pull
+    #git pull
 else
 	git clone https://github.com/nkalband/Spark-cluster-utils.git
 fi

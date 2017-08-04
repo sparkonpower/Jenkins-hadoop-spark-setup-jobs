@@ -5,36 +5,69 @@
   <keepDependencies>false</keepDependencies>
   <properties>
     <org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
-      <triggers>
-        <hudson.triggers.TimerTrigger>
-          <spec>@daily</spec>
-        </hudson.triggers.TimerTrigger>
-      </triggers>
+      <triggers/>
     </org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
   </properties>
-  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2.29">
-    <script> pipeline {
-    agent any
-    stages{
-        stage(&apos;Build Spark&apos;) {
-            steps{
-              build job: &apos;Spark_Weekly_Build_Runnable_dist&apos;, parameters: [text(name: &apos;BUILD_MACHINE&apos;, value: &apos;9.3.126.18&apos;), text(name: &apos;USER&apos;, value: &apos;testuser&apos;), text(name: &apos;SPARK_BRANCH&apos;, value: &apos;2.0&apos;), text(name: &apos;HADOOP_PROFILE&apos;, value: &apos;2.7&apos;), text(name: &apos;BUILD_WITH_HIVE&apos;, value: &apos;Y&apos;), text(name: &apos;JDK_VAL&apos;, value: &apos;OPENJDK&apos;), text(name: &apos;GIT_URLL&apos;, value: &apos;https://github.com/apache/spark.git&apos;)]
-            }
-        }
-        stage(&apos;Install Spark&apos;) {
-            steps{
-                build job: &apos;Setup_spark&apos;, parameters: [text(name: &apos;USER&apos;, value: &apos;testuser&apos;), text(name: &apos;MASTER_IP&apos;, value: &apos;9.3.126.18&apos;)]    
-            }
-        }
-        stage(&apos;Run Benchmark&apos;){
-            steps{
-               build job: &apos;Run_benchmark_tpcds&apos;, parameters: [text(name: &apos;USER&apos;, value: &apos;testuser&apos;), text(name: &apos;MASTER_IP&apos;, value: &apos;9.3.126.18&apos;), text(name: &apos;DB_SIZE&apos;, value: &apos;1&apos;), text(name: &apos;QUERIES&apos;, value: &apos;all&apos;), text(name: &apos;QUERY_ITERATION&apos;, value: &apos;2&apos;), text(name: &apos;NUM_EXECUTORS&apos;, value: &apos;2&apos;), text(name: &apos;EXEC_CORES&apos;, value: &apos;2&apos;), text(name: &apos;EXEC_MEM&apos;, value: &apos;2g&apos;)]
-            }
-        }
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2.27">
+    <script>import groovy.json.JsonSlurper
+import groovy.json.JsonParserType
+
+def getTags() {
+    String url = &quot;http://localhost:9000&quot;
+    String uriPath = &quot;/api/t_benchmarks/tags/v*&quot;
+
+
+    def get = new URL(url+uriPath).openConnection();
+    def getRC = get.getResponseCode();
+
+    if(getRC.equals(200)) {
+        jsonText = get.getInputStream().getText();
     }
+
+    def parser = new JsonSlurper()
+    def jsonResp = parser.parseText(jsonText)
+    return jsonResp
 }
 
-</script>
+@NonCPS
+getRemoteTags(){
+    def get_remote_tags = [ &quot;/bin/bash&quot;, &quot;-c&quot;, &quot;git ls-remote --tags  https://github.com/apache/spark.git | awk &apos;{print \$2}&apos; | grep -v &apos;\\^{}\$&apos; | sort -r -V | sed &apos;s@refs/tags/@@&apos;&quot; ]
+    def rempte_tag_process = get_remote_tags.execute();
+    rempte_tag_process.waitFor()
+    return rempte_tag_process.in.text.tokenize(&quot;\n&quot;)
+}
+local_tags = getTags()
+remote_tags = getRemoteTags()
+
+def common_tags = local_tags.intersect(remote_tags)
+def new_tags = (local_tags.plus(remote_tags)) - common_tags
+println &quot;new tags: &quot;+new_tags
+
+for(i=0;i&lt;new_tags.size;i++){
+    currentBuild_result = &apos;SUCCESS&apos;
+    try{
+        
+        stage(&apos;Build Spark_&apos;+new_tags[i]) {
+          
+                build job: &apos;Spark_Weekly_Build_Runnable_dist_latest&apos;, parameters: [text(name: &apos;BUILD_MACHINE&apos;, value: &apos;10.88.67.158&apos;), text(name: &apos;USER&apos;, value: &apos;hdp_test&apos;), text(name: &apos;GIT_TAG&apos;, value: new_tags[i]), text(name: &apos;HADOOP_PROFILE&apos;, value: &apos;2.7&apos;), text(name: &apos;BUILD_WITH_HIVE&apos;, value: &apos;Y&apos;), text(name: &apos;JDK_VAL&apos;, value: &apos;OPENJDK&apos;), text(name: &apos;GIT_URLL&apos;, value: &apos;https://github.com/apache/spark.git&apos;)]
+            
+        }
+        stage(&apos;Install Spark_&apos;+new_tags[i]) {
+            
+                build job: &apos;setup_spark_latest&apos;, parameters: [text(name: &apos;USER&apos;, value: &apos;hdp_test&apos;), text(name: &apos;MASTER_IP&apos;, value: &apos;10.88.67.158&apos;)]
+            
+        }
+        stage(&apos;Run Benchmark_&apos;+new_tags[i]){
+           
+                build job: &apos;Run_benchmark_tpcds_latest&apos;, parameters: [text(name: &apos;USER&apos;, value: &apos;hdp_test&apos;), text(name: &apos;MASTER_IP&apos;, value: &apos;10.88.67.158&apos;), text(name: &apos;GIT_TAG&apos;, value: new_tags[i]), text(name: &apos;DB_SIZE&apos;, value: &apos;1&apos;), text(name: &apos;QUERIES&apos;, value: &apos;q3,q5,q6,q9,q11,q12,q15&apos;), text(name: &apos;QUERY_ITERATION&apos;, value: &apos;2&apos;), text(name: &apos;NUM_EXECUTORS&apos;, value: &apos;2&apos;), text(name: &apos;EXEC_CORES&apos;, value: &apos;2&apos;), text(name: &apos;EXEC_MEM&apos;, value: &apos;2g&apos;)]
+            
+        }   
+    }catch (Exception err) {
+            currentBuild_result = &apos;FAILURE&apos;
+	}
+	    tag=new_tags[i]
+        echo &quot;RESULT for ${tag} :${currentBuild_result}&quot;
+}		</script>
     <sandbox>true</sandbox>
   </definition>
   <triggers/>
