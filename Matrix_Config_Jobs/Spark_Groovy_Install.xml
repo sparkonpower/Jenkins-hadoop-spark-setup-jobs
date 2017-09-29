@@ -1,0 +1,412 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<flow-definition plugin="workflow-job@2.11.2">
+  <actions>
+    <io.jenkins.blueocean.service.embedded.BlueOceanUrlAction plugin="blueocean-rest-impl@1.1.5">
+      <blueOceanUrlObject class="io.jenkins.blueocean.service.embedded.BlueOceanUrlObjectImpl">
+        <mappedUrl>blue/organizations/jenkins/ART-SPARK-PERF-TEST%2FSpark_Groovy_Install</mappedUrl>
+      </blueOceanUrlObject>
+    </io.jenkins.blueocean.service.embedded.BlueOceanUrlAction>
+    <org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobPropertyTrackerAction plugin="pipeline-model-definition@1.1.9">
+      <jobProperties/>
+      <triggers/>
+      <parameters/>
+    </org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobPropertyTrackerAction>
+  </actions>
+  <description></description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <com.synopsys.arc.jenkins.plugins.ownership.jobs.JobOwnerJobProperty plugin="ownership@0.8"/>
+    <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@1.25">
+      <autoRebuild>false</autoRebuild>
+      <rebuildDisabled>false</rebuildDisabled>
+    </com.sonyericsson.rebuild.RebuildSettings>
+    <com.synopsys.arc.jenkinsci.plugins.jobrestrictions.jobs.JobRestrictionProperty plugin="job-restrictions@0.4"/>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.TextParameterDefinition>
+          <name>SPARK_TAG</name>
+          <description></description>
+          <defaultValue>master</defaultValue>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>HADOOP_PROFILE</name>
+          <description></description>
+          <defaultValue>2.7</defaultValue>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>HADOOP_VERSION</name>
+          <description></description>
+          <defaultValue>2.7.3</defaultValue>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>GIT_URL</name>
+          <description></description>
+          <defaultValue>https://github.com/apache/spark.git</defaultValue>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.ChoiceParameterDefinition>
+          <name>BUILD_WITH_HIVE</name>
+          <description></description>
+          <choices class="java.util.Arrays$ArrayList">
+            <a class="string-array">
+              <string>Y</string>
+              <string>N</string>
+            </a>
+          </choices>
+        </hudson.model.ChoiceParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>EMAIL_IDS</name>
+          <description>Add list of email ids separated by &quot;;&quot;(semi-colon)</description>
+          <defaultValue>shardul@us.ibm.com;maheshsa@us.ibm.com</defaultValue>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.ChoiceParameterDefinition>
+          <name>DETAIL_MAIL</name>
+          <description>If selected &quot;Y&quot; then the build status mail will contain list of failed testcases.</description>
+          <choices class="java.util.Arrays$ArrayList">
+            <a class="string-array">
+              <string>Y</string>
+              <string>N</string>
+            </a>
+          </choices>
+        </hudson.model.ChoiceParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+    <org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+      <triggers>
+        <hudson.triggers.TimerTrigger>
+          <spec>H 4 * * 1,3,5</spec>
+        </hudson.triggers.TimerTrigger>
+      </triggers>
+    </org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@2.38">
+    <script>import groovy.json.JsonSlurper
+import groovy.json.JsonParserType
+import hudson.model.*
+import com.tikal.jenkins.plugins.multijob.*;
+import hudson.tasks.test.AbstractTestResultAction
+import hudson.tasks.junit.TestResultAction
+import javax.mail.internet.*;
+import javax.mail.*
+import javax.activation.*
+
+//sendmail(message , subject, toAddress, fromAddress, host, port);
+ 
+
+HttpResponse doGetHttpRequest(String requestUrl){    
+    URL url = new URL(requestUrl);    
+    HttpURLConnection connection = url.openConnection();    
+
+    connection.setRequestProperty(&quot;Content-Type&quot;, &quot;application/json&quot;); 
+    connection.setRequestMethod(&quot;GET&quot;);    
+
+    //get the request    
+    connection.connect();    
+
+    //parse the response    
+    HttpResponse resp = new HttpResponse(connection);    
+
+    
+    return resp;    
+}  
+
+HttpResponse doPostHttpRequestWithJson(String json, String requestUrl){    
+    return doHttpRequestWithJson(json, requestUrl, &quot;POST&quot;);    
+}    
+
+HttpResponse doHttpRequestWithJson(String json, String requestUrl, String verb){    
+    URL url = new URL(requestUrl);    
+    HttpURLConnection connection = url.openConnection();    
+
+    connection.setRequestMethod(verb);    
+    connection.setRequestProperty(&quot;Content-Type&quot;, &quot;application/json&quot;);    
+    connection.doOutput = true;    
+
+    //write the payload to the body of the request    
+    def writer = new OutputStreamWriter(connection.outputStream);    
+    writer.write(json);    
+    writer.flush();    
+    writer.close();    
+
+    //post the request    
+    connection.connect();    
+
+    //parse the response    
+    HttpResponse resp = new HttpResponse(connection);    
+
+    return resp;    
+}  
+
+class HttpResponse implements Serializable {    
+    String body;    
+    String message;    
+    Integer statusCode;    
+    boolean failure = false;    
+
+    public HttpResponse(HttpURLConnection connection){    
+        this.statusCode = connection.responseCode;    
+        this.message = connection.responseMessage;    
+
+        if(statusCode == 200 || statusCode == 201){    
+            this.body = connection.content.text;
+        }else{    
+            this.failure = true;    
+            this.body = connection.getErrorStream().text;    
+        }    
+
+        connection = null; 
+    }       
+}
+ 
+def sendmail(String message ,String subject, String toAddress, String fromAddress, String host, String port){
+	Properties mprops = new Properties();
+	mprops.setProperty(&quot;mail.transport.protocol&quot;,&quot;smtp&quot;);
+	mprops.setProperty(&quot;mail.host&quot;,host);
+	mprops.setProperty(&quot;mail.smtp.port&quot;,port);
+
+	Session lSession = Session.getDefaultInstance(mprops,null);
+	MimeMessage msg = new MimeMessage(lSession);
+
+	String [] emailTos = toAddress.split(&quot;;&quot;)
+	int i = 0;
+	InternetAddress[] to = new InternetAddress[emailTos.length];
+	while(i &lt; emailTos.length){
+	  to[i] = new InternetAddress(emailTos[i]);
+	  i = i + 1;
+	}
+	msg.setRecipients(Message.RecipientType.TO,to);
+	msg.setFrom(new InternetAddress(fromAddress));
+	msg.setSubject(subject);
+	//msg.setText(message)
+	msg.setContent(message, &quot;text/html; charset=utf-8&quot;);
+
+	Transport transporter = lSession.getTransport(&quot;smtp&quot;);
+	transporter.connect();
+	transporter.send(msg);
+}
+
+def reportOnTestsForBuild(build, ubuntuStatus, redHatStatus) {
+    def fromAddress = &quot;IBMSystemAIX@ibm.com&quot;
+    def toAddress = params.EMAIL_IDS
+    //def host = &quot;9.44.229.122&quot;
+    def host = &quot;relay.us.ibm.com&quot;
+    def port = &quot;25&quot;
+	println(&quot;Build Number: ${build.number}&quot;)
+	String buildUrl = &quot;https://sys-aix-jenkins.swg-devops.com:8443/job/ART-SPARK-PERF-TEST/job/Spark_Groovy_Install/${build.number}&quot;
+	def jobResult = build.getResult()
+	println(&quot;Job Result : ${jobResult}&quot;)
+	def subject = &quot;ART-SPARK-PERF-TEST » Spark_Groovy_Install - Build # ${build.number} - ${jobResult}&quot;
+	String emailReport = &quot;&lt;b&gt;Build URL&lt;/b&gt; : ${buildUrl} &lt;br&gt;&quot;
+	if (ubuntuStatus != &quot;&quot;)
+	{
+		emailReport = emailReport + ubuntuStatus + &quot;&lt;br&gt;&quot;
+	}
+	
+	if (redHatStatus != &quot;&quot;)
+	{
+		emailReport = emailReport + redHatStatus + &quot;&lt;br&gt;&quot;
+	}
+	if (build.getRawBuild().getAction(hudson.tasks.junit.TestResultAction.class) == null) {
+		println(&quot;No tests&quot;)
+		emailReport = emailReport + &quot;&lt;b&gt;No tests&lt;/b&gt;&quot;
+	}
+	else{  
+		def testResults = build.getRawBuild().getAction(hudson.tasks.junit.TestResultAction.class).getFailCount();
+		println(&quot;Failed Count: ${testResults}&quot;)
+		def failed = build.getRawBuild().getAction(hudson.tasks.junit.TestResultAction.class).getFailedTests()
+		println(&quot;Failed Tests: ${failed}&quot;)
+		def total = build.getRawBuild().getAction(hudson.tasks.junit.TestResultAction.class).getTotalCount()
+		println(&quot;Total Tests: ${total}&quot;)
+		def skipped = build.getRawBuild().getAction(hudson.tasks.junit.TestResultAction.class).getSkipCount()
+		println(&quot;Skipped Tests: ${skipped}&quot;)
+		def failures = [:]
+		def result = build.getRawBuild().getAction(hudson.tasks.junit.TestResultAction.class).result
+
+		if (result == null) {
+		emailReport = emailReport + &quot;No test results&quot;
+		} else if (result.failCount &lt; 1) {
+		    emailReport = emailReport + &quot;&lt;b&gt;&lt;font color=&apos;blue&apos;&gt;No failures&lt;/font&gt;&lt;/b&gt;&quot;
+		} else {
+			//https://sys-aix-jenkins.swg-devops.com:8443/job/ART-SPARK-PERF-TEST/job/Spark_Groovy_Install/149/testReport/org.apache.spark.sql.kafka010/KafkaSourceStressSuite/stress_test_with_multiple_topics_and_partitions/
+			emailReport = emailReport + &quot;&lt;b&gt;Total Tests Count: ${total}&lt;/b&gt;&lt;br&gt;&quot;
+			emailReport = emailReport + &quot;&lt;b&gt;Test Report: &lt;/b&gt;https://sys-aix-jenkins.swg-devops.com:8443/job/ART-SPARK-PERF-TEST/job/Spark_Groovy_Install/${build.number}/testReport &lt;br&gt;&quot;
+			emailReport = emailReport + &quot;&lt;b&gt;Total Fail Count: &lt;font color=&apos;red&apos;&gt;${result.failCount}&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&quot;
+			
+			if (params.DETAIL_MAIL == &quot;Y&quot; || params.DETAIL_MAIL == &quot;y&quot;)
+			{
+				emailReport = emailReport + &quot;&lt;b&gt;Failed Testcases Details : &lt;/b&gt;&lt;br&gt;&quot;
+				failedTests = result.getFailedTests();
+				strTable = &quot;&lt;table border=1&gt;&lt;tr&gt;&lt;th&gt;Failed Testcases&lt;/th&gt;&lt;/tr&gt;&quot;
+				failedTests.each { test -&gt;
+					failures.put(test.fullDisplayName, test)
+					String testFullName = test.fullDisplayName
+					println(&quot;Testcase Name : ${testFullName}&quot;)
+					String [] names = testFullName.split(&quot;\\.&quot;)
+					String testSuite = names[names.length - 2]
+					String testName = names[names.length - 1]
+					testName = testName.replace(&quot; &quot;,&quot;_&quot;)
+					int i = 1
+					testFullName = names[0]
+					while(i &lt; names.length - 2)
+					{
+						testFullName = testFullName + &quot;.&quot; + names[i]
+						i = i + 1
+					}
+					String url = buildUrl + &quot;/testReport/${testFullName}/${testSuite}/${testName}&quot;
+					strTable = strTable + &quot;&lt;tr&gt;&lt;td&gt;${url}&lt;/td&gt;&lt;/tr&gt;&quot;
+				}
+				strTable = strTable + &quot;&lt;/table&gt;&quot;
+				emailReport = emailReport + strTable
+			}
+		}
+	}
+	println(&quot;${emailReport}&quot;)
+	println(&quot;Sending mail.......&quot;)
+	sendmail(emailReport , subject, toAddress, fromAddress, host, port)
+	return (emailReport)
+}
+
+@NonCPS
+def runShellCommand(strCommand){
+    def command = [ &quot;/bin/bash&quot;, &quot;-c&quot;, strCommand]
+    def command_process = command.execute();
+    command_process.waitFor()
+    return command_process.in.text
+}
+
+def installBuild(javaType){
+	try{
+	    println(&quot;JAVA Type : ${javaType}&quot;)
+		String JAVAHOME = &quot;&quot;
+		if (javaType.equals(&quot;OPENJDK&quot;)){
+			JAVAHOME=&quot;/usr/lib/jvm/java-8-openjdk-ppc64el&quot;
+		}
+		else if (javaType.equals(&quot;IBMJDK&quot;)){
+			JAVAHOME=&quot;/home/builduser/IBMJAVA/ibm-java-ppc64le-80&quot;
+		}
+		
+		//def pa = new ParametersAction([
+		//  new StringParameterValue(&quot;JAVA_HOME&quot;, JAVAHOME)
+		//])
+		//currentBuild.addAction(pa)
+		//sh &quot;build/mvn -Psparkr -Phadoop-2.7 -Dhadoop.version=2.7.3 -Pyarn -DskipTests clean package&quot;
+		//sh &quot;build/mvn --fail-never -Pyarn -Phadoop-2.7 -Dhadoop.version=2.7.3 test&quot;
+		//String java_home = sh(script: &quot;echo \$JAVA_HOME&quot;, returnStdout: true).trim()
+		//println(&quot;Java Home : ${java_home}&quot;)
+		if (params.BUILD_WITH_HIVE == &quot;Y&quot; || params.BUILD_WITH_HIVE == &quot;y&quot;)
+		{
+			sh &quot;export PATH=${JAVAHOME}/bin:${JAVAHOME}/jre/bin:\$PATH;java -version;build/mvn -Psparkr -Phadoop-${params.HADOOP_PROFILE} -Dhadoop.version=${params.HADOOP_VERSION} -Phive -Phive-thriftserver -Pyarn -DskipTests clean package&quot;
+			sh &quot;export PATH=${JAVAHOME}/bin:${JAVAHOME}/jre/bin:\$PATH;java -version;build/mvn --fail-never -Pyarn -Phadoop-${params.HADOOP_PROFILE} -Dhadoop.version=${params.HADOOP_VERSION} -Phive -Phive-thriftserver test&quot;
+		}
+		else
+		{
+			sh &quot;export PATH=${JAVAHOME}/bin:${JAVAHOME}/jre/bin:\$PATH;java -version;build/mvn -Psparkr -Phadoop-${params.HADOOP_PROFILE} -Dhadoop.version=${params.HADOOP_VERSION} -Pyarn -DskipTests clean package&quot;
+			sh &quot;export PATH=${JAVAHOME}/bin:${JAVAHOME}/jre/bin:\$PATH;java -version;build/mvn --fail-never -Pyarn -Phadoop-${params.HADOOP_PROFILE} -Dhadoop.version=${params.HADOOP_VERSION} test&quot;
+		}
+// 		sh &quot;export PATH=${JAVAHOME}/bin:${JAVAHOME}/jre/bin:\$PATH;java -version;/home/builduser/spark/build/mvn -B -Dmaven.test.failure.ignore test;&quot;
+		//sh &quot;mvn clean test&quot;
+                    
+		//sh &quot;/home/builduser/jenkins/workspace/ART-SPARK-PERF-TEST/Spark_Last_Commit/spark/build/mvn -f junit5-maven-consumer/pom.xml clean test&quot;
+		step([$class: &apos;JUnitResultArchiver&apos;, allowEmptyResults: true, testResults: &apos;**/target/surefire-reports/*.xml&apos;])
+	}catch(Exception e){
+		println(&quot;Got Exception : &quot; + e.getMessage())
+		currentBuild.result = &apos;FAILURE&apos;
+	}
+}
+
+def processBuild(label)
+{
+	String url = &quot;http://9.3.126.252:9000/api/build_info&quot;
+	boolean isBuildProcessed = true
+	try{
+        println(&quot;----------Branch :${params.SPARK_TAG}&quot;)
+        stage(&apos;Checkout/Build/Test&apos;) {
+        
+            // Checkout files.
+            checkout([
+                $class: &apos;GitSCM&apos;,
+                branches: [[name: params.SPARK_TAG]],
+                doGenerateSubmoduleConfigurations: false,
+                extensions: [], submoduleCfg: [],
+                userRemoteConfigs: [[
+                    name: &apos;github&apos;,
+                    url: params.GIT_URL
+            //        url: &apos;https://github.com/jglick/simple-maven-project-with-tests.git&apos;
+            //        url : &apos;https://github.com/junit-team/junit5-samples.git&apos;
+                ]]
+            ])
+            
+            gitCommit = sh (
+                script: &apos;git log -n 1 --pretty=format:&quot;%H&quot;&apos;,
+                returnStdout: true
+            ).trim()
+            println(&quot;Git Commit : ${gitCommit}&quot;)
+            
+            runShellCommand(&quot;sudo kill -9 \$(sudo ps -ef | grep zin[c] | awk -F &apos; &apos; &apos;{print \$2}&apos;)&quot;)
+            
+            HttpResponse response = doGetHttpRequest(url + &quot;/&quot; + gitCommit + &quot;/&quot; + label)
+            println(&quot;Response : ${response.body}&quot;)
+            
+            def jsonResp = new JsonSlurper().parseText(response.body)
+            //jsonResp = []
+            if (jsonResp != null)
+            {
+                println(&quot;Json Response : ${jsonResp}&quot;)
+                if (jsonResp == []){
+                    jsonResp = null
+                    isbuildRun = true
+                    dateStr = sh (
+                        script: &apos;date +%Y-%m-%dT%H:%M:%S.%3NZ&apos;,
+                        returnStdout: true
+                    ).trim()
+                    println(&quot;Date : ${dateStr}&quot;)
+                    postJson = &apos;{&quot;tag&quot;: &quot;master&quot;,&quot;last_commit&quot;: &quot;&apos;+gitCommit+&apos;&quot;,&quot;jenkins_url&quot;: &quot;https://sys-aix-jenkins.swg-devops.com:8443/job/ART-SPARK-PERF-TEST/job/Spark_Groovy_Install/${currentBuild.number}&quot;,&quot;date&quot;: &quot;&apos;+dateStr+&apos;&quot;,&quot;node_label&quot;: &quot;&apos;+label+&apos;&quot;}&apos;
+                    response = doPostHttpRequestWithJson(postJson, url)
+                    println(&quot;Response : ${response.body}&quot;)
+					
+					installBuild(&quot;OPENJDK&quot;)
+					installBuild(&quot;IBMJDK&quot;)
+					currentBuild.result = &apos;SUCCESS&apos;
+                }
+                else{
+                    currentBuild.result = &apos;SUCCESS&apos;
+					isBuildProcessed = false
+                }
+            }
+        }
+    }catch(Exception e){
+        println(&quot;Got Exception : &quot; + e.getMessage())
+        currentBuild.result = &apos;FAILURE&apos;
+    }
+	
+	return isBuildProcessed
+}
+
+def labels = [&apos;ART-SPARK-PERF-ppc64leUbuntu&apos;, &apos;ART-SPARK-PERF-ppc64leRedHat&apos;]
+def builders = [:]
+String redHatStatus = &quot;&quot;
+String ubuntuStatus = &quot;&quot;
+builders[labels[0]] = {
+	node(labels[0]) {
+		if (!processBuild(labels[0]))
+		{
+			ubuntuStatus = &quot;&lt;b&gt;&lt;font color=&apos;blue&apos;&gt;Build on &apos;${labels[0]}&apos; is already processed.&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&quot;
+		}
+	}
+}
+builders[labels[1]] = {
+    node(labels[1]){
+        if (!processBuild(labels[1]))
+		{
+			redHatStatus = &quot;&lt;b&gt;&lt;font color=&apos;blue&apos;&gt;Build on &apos;${labels[1]}&apos; is already processed.&lt;/font&gt;&lt;/b&gt;&lt;br&gt;&quot;
+		}
+	}
+}
+    
+parallel builders
+
+reportOnTestsForBuild(currentBuild, ubuntuStatus, redHatStatus)</script>
+    <sandbox>true</sandbox>
+  </definition>
+  <triggers/>
+  <disabled>false</disabled>
+</flow-definition>
